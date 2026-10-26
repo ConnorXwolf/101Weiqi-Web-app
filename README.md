@@ -71,7 +71,7 @@
 
 本手需要一個瀏覽器擴充功能，負責在 101 的「我的作業」頁面讀取你的做題紀錄。支援 Chrome、Edge 及其他 Chromium 瀏覽器。
 
-1. 到 [Releases](https://github.com/YOUR-NAME/YOUR-REPO/releases/latest) 下載最新的 `benshou-extension.zip`，解壓縮到一個不會被刪掉的資料夾。
+1. 到 [Releases](https://github.com/ConnorXwolf/101weiqi-web-app/releases/latest) 下載最新的 `benshou-extension.zip`，解壓縮到一個不會被刪掉的資料夾。
 2. 在網址列輸入 `chrome://extensions`（Edge 為 `edge://extensions`）。
 3. 打開右上角的 **開發人員模式**。
 4. 按 **載入未封裝項目**，選擇剛剛解壓縮的資料夾。
@@ -94,7 +94,7 @@
 
    ![同步到本手按鈕](docs/images/sync-button-corner.png)
 
-4. 等待讀取完成。進度會顯示在右下角（例如「讀取各題等級、題型與先手 20/2783」）。第一次需要逐題讀取，題目越多越久；之後只會讀新的題目。
+4. 等待讀取完成。進度會顯示在右下角（例如「讀取各題等級、題型與先手 20/2783」）。第一次需要逐題讀取，會較久，大約需要5分鐘；之後只會讀新的題目。
 
    ![同步中](docs/images/syncing.png)
 
@@ -106,9 +106,10 @@
 
 做完作業後，到 101「我的作業」按一次 **同步到本手** 即可。本手總覽右上角會顯示上次同步時間。
 
-### 在另一台電腦查看
+### 在另一台裝置查看
 
-開啟本手同步視窗，在「已經有代碼？在這台電腦登入」輸入 12 碼代碼，按 **登入**。
+開啟本手，輸入 12 碼代碼，按 **登入**。
+![首頁](docs/images/home.png)
 
 ---
 
