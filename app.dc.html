@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本手-棋力追蹤</title>
+<link rel="icon" type="image/png" href="favicon.png?v=2">
+<link rel="apple-touch-icon" href="icon.png?v=2">
+<link rel="stylesheet" href="assets/styles.css?v=2">
+<script src="assets/ds_bundle.js?v=2"></script>
+<script src="config.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="api.js?v=2"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-800)}button{font-family:inherit}</style>
+</helmet>
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text)">
+
+<sc-if value="{{ booting }}" hint-placeholder-val="{{ true }}">
+  <div style="min-height:100vh;display:grid;place-items:center"><img src="icon.png?v=2" alt="本手" style="width:72px;height:72px;border-radius:20px"></div>
+</sc-if>
+
+<sc-if value="{{ hasFatal }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:100vh;display:grid;place-items:center;padding:24px"><div class="card" style="max-width:420px;padding:28px"><span class="card-title">無法開啟</span><div style="font-size:14px">{{ fatal }}</div></div></div>
+</sc-if>
+
+<sc-if value="{{ showAuth }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="登入" style="min-height:100vh;display:grid;grid-template-columns:{{ authCols }}">
+    <div style="position:relative;overflow:hidden;background:var(--color-surface);padding:56px 48px;display:flex;flex-direction:column;justify-content:flex-end;min-height:260px">
+      <div style="position:absolute;top:48px;right:-40px;width:220px;height:220px;border-radius:50%;background:var(--color-text);box-shadow:var(--shadow-lg)"></div>
+      <div style="position:absolute;top:190px;right:150px;width:150px;height:150px;border-radius:50%;background:var(--color-neutral-100);box-shadow:var(--shadow-md)"></div>
+      <div style="position:absolute;top:96px;right:250px;width:64px;height:64px;border-radius:50%;background:var(--color-accent-2-300)"></div>
+      <div style="position:relative;max-width:440px">
+        <img src="icon.png?v=2" alt="" style="width:88px;height:88px;border-radius:24px;box-shadow:var(--shadow-md);margin-bottom:18px;display:block"><div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font-family:var(--font-heading);font-size:64px;line-height:1">本手</span><span style="font-family:var(--font-heading);font-size:26px;color:var(--color-accent-700)">棋力追蹤</span></div>
+        <p style="font-size:18px;line-height:1.6;margin:16px 0 0;color:var(--color-neutral-800);text-wrap:pretty">101 圍棋作業的答對率、思考時間與錯題，依題目等級與題型整理。</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;padding:40px 48px">
+      <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px">
+        <h2 style="margin:0">登入</h2>
+        <div class="field"><label>登入代碼</label><input class="input" value="{{ fCode }}" onChange="{{ onFCode }}" onKeyDown="{{ onCodeKey }}" placeholder="XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" style="font-size:20px;letter-spacing:.12em;text-transform:uppercase;min-height:52px"></div>
+        <sc-if value="{{ hasAuthErr }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:var(--color-accent-700)">{{ authErr }}</div></sc-if>
+        <sc-if value="{{ hasAuthMsg }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;padding:12px 16px;border-radius:20px;background:var(--color-accent-2-200);color:var(--color-accent-2-900)">{{ authMsg }}</div></sc-if>
+        <button class="btn btn-primary" style="width:100%;padding:12px" disabled="{{ busy }}" onClick="{{ doAuth }}">登入</button>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:18px 20px;border-radius:28px;background:var(--color-surface)">
+          <span style="font-weight:700;font-size:14px">還沒有代碼？</span>
+          <sc-for list="{{ codeSteps }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:13px"><span style="width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--color-bg)">{{ t.no }}</span><span style="padding-top:2px;text-wrap:pretty">{{ t.text }}</span></div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ demo }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+            <div style="font-size:12px;color:var(--color-neutral-700)">示範模式（尚未設定 config.js）</div>
+            <button class="btn btn-secondary" style="align-self:flex-start;white-space:nowrap" onClick="{{ demoLogin }}"><span>用示範資料進入</span></button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ showApp }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:{{ shellCols }};min-height:100vh">
+    <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+      <aside style="background:var(--color-surface);padding:24px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:8px;padding:0 12px 18px;flex-wrap:wrap"><img src="icon.png?v=2" alt="" style="width:36px;height:36px;border-radius:12px;flex:none"><span style="display:flex;align-items:baseline;gap:6px"><span style="font-family:var(--font-heading);font-size:24px">本手</span><span style="font-size:13px;font-weight:700;color:var(--color-accent-700)">棋力追蹤</span></span><sc-if value="{{ demo }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">示範</span></sc-if></div>
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+          <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:999px;border:0;background:{{ n.bg }};color:{{ n.color }};font-size:14px;font-weight:600;cursor:pointer;text-align:left" style-hover="background:var(--color-accent-100)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>{{ n.label }}</button>
+        </sc-for>
+        <div style="margin-top:auto;padding:18px 12px 0;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">{{ meName }}</div><div style="font-size:11px;color:var(--color-neutral-700)">{{ meLevel }}</div></div>
+          <button class="btn btn-ghost" style="white-space:nowrap;flex:none" onClick="{{ logout }}">登出</button>
+        </div>
+      </aside>
+    </sc-if>
+
+    <div style="min-width:0;display:flex;flex-direction:column">
+      <sc-if value="{{ mobile }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--color-surface)">
+          <img src="icon.png?v=2" alt="" style="width:32px;height:32px;border-radius:10px;flex:none"><span style="display:flex;align-items:baseline;gap:6px;margin-right:auto"><span style="font-family:var(--font-heading);font-size:22px">本手</span><span style="font-size:12px;font-weight:700;color:var(--color-accent-700)">棋力追蹤</span></span>
+          <button class="btn btn-ghost" style="min-height:44px;white-space:nowrap;flex:none" onClick="{{ logout }}">登出</button>
+        </div>
+      </sc-if>
+
+      <main data-screen-label="{{ pageLabel }}" style="padding:{{ mainPad }};display:flex;flex-direction:column;gap:24px;max-width:1240px;width:100%">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="margin-right:auto;min-width:0">
+            <h2 style="margin:0">{{ headTitle }}</h2>
+            <div style="font-size:13px;color:var(--color-neutral-700)">{{ headSub }}</div>
+          </div>
+          <sc-if value="{{ loadingRows }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">讀取中…</span></sc-if>
+          <sc-if value="{{ showPeriod }}" hint-placeholder-val="{{ false }}">
+            <div class="seg"><sc-for list="{{ periods }}" as="p" hint-placeholder-count="4"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div>
+          </sc-if>
+          <sc-if value="{{ showStaleTag }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent">{{ staleTagText }}</span></sc-if>
+        </div>
+        <sc-if value="{{ showCustom }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:-8px">
+            <div class="field"><label>起日</label><input class="input" type="date" value="{{ cFrom }}" onChange="{{ onFrom }}"></div>
+            <div class="field"><label>迄日</label><input class="input" type="date" value="{{ cTo }}" onChange="{{ onTo }}"></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showNoData }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="padding:32px;gap:12px;max-width:640px"><span class="card-title">這段期間沒有做題紀錄</span><div style="font-size:14px;text-wrap:pretty">{{ noDataHint }}</div><sc-if value="{{ neverSynced }}" hint-placeholder-val="{{ false }}"><button class="btn btn-primary" style="align-self:flex-start" onClick="{{ goSync }}">看怎麼同步</button></sc-if></div>
+        </sc-if>
+
+        <!-- 總覽 -->
+        <sc-if value="{{ pgOverview }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div class="card" style="padding:20px 22px;gap:4px"><div style="font-size:12px;color:var(--color-neutral-700)">{{ k.label }}</div><div style="font-family:var(--font-heading);font-size:34px;line-height:1.1">{{ k.value }}</div><div style="font-size:12px;color:var(--color-neutral-700)">{{ k.sub }}</div></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:14px 22px;border-radius:28px;background:{{ upBg }};color:{{ upInk }};flex-wrap:wrap">
+            <span class="tag" style="background:{{ upTagBg }};color:var(--color-bg)">{{ upTag }}</span>
+            <span style="font-size:14px;flex:1;min-width:200px;text-wrap:pretty">{{ upText }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h4 style="margin:0">各等級 × 題型</h4><span style="font-size:12px;color:var(--color-neutral-700)">{{ comboNote }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+              <sc-for list="{{ ovCombos }}" as="c" hint-placeholder-count="6">
+                <button onClick="{{ c.open }}" class="card" style="padding:20px 22px;gap:10px;border:0;text-align:left;cursor:pointer;color:var(--color-text);font-size:inherit" style-hover="box-shadow:var(--shadow-md)">
+                  <span style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--font-heading);font-size:18px;margin-right:auto">{{ c.key }}</span><span class="tag {{ c.trendClass }}" title="{{ c.slopeText }}">{{ c.trendText }}</span><span class="tag {{ c.tagClass }}">{{ c.status }}</span></span>
+                  <span style="display:flex;align-items:flex-end;gap:12px">
+                    <span style="font-family:var(--font-heading);font-size:38px;line-height:1">{{ c.accPct }}</span>
+                    <span style="font-size:12px;color:var(--color-neutral-700);padding-bottom:4px">{{ c.n }} 題</span>
+                    <svg width="120" height="36" viewBox="0 0 120 36" style="margin-left:auto;overflow:visible"><line x1="0" x2="120" y1="{{ c.thrS }}" y2="{{ c.thrS }}" stroke="var(--color-neutral-400)" stroke-dasharray="3 3"></line><polyline points="{{ c.ptsS }}" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+                  </span>
+                  <span style="display:block;height:8px;border-radius:999px;background:var(--color-neutral-200);overflow:hidden"><span style="display:block;height:100%;width:{{ c.prog }};border-radius:999px;background:var(--color-accent-2-500)"></span></span>
+                  <span style="display:flex;font-size:12px;color:var(--color-neutral-700)"><span style="margin-right:auto">答對 {{ c.okT }}s · 錯題 {{ c.badT }}s</span><span>快錯 {{ c.fastPct }}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+            <div class="card" style="padding:22px 24px;gap:14px">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="card-title" style="margin-right:auto">{{ volTitle }}</span><sc-for list="{{ legend }}" as="t" hint-placeholder-count="4"><span style="display:flex;align-items:center;gap:5px;font-size:12px"><i style="width:10px;height:10px;border-radius:50%;background:{{ t.color }}"></i>{{ t.name }}</span></sc-for></div>
+              <div style="display:flex;align-items:flex-end;gap:8px;height:186px;padding-top:6px">
+                <sc-for list="{{ vol }}" as="w" hint-placeholder-count="4">
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="font-size:12px;font-weight:600">{{ w.total }}</div><div style="width:100%;max-width:56px;display:flex;flex-direction:column-reverse;border-radius:12px;overflow:hidden"><sc-for list="{{ w.segs }}" as="g" hint-placeholder-count="4"><div style="height:{{ g.h }};background:{{ g.color }}"></div></sc-for></div><div style="font-size:11px;color:var(--color-neutral-700);white-space:nowrap">{{ w.label }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="card" style="padding:22px 24px;gap:6px">
+              <div style="display:flex;align-items:center;padding-bottom:6px"><span class="card-title" style="margin-right:auto">答錯兩次以上</span><button class="btn btn-ghost" onClick="{{ goReview }}"><span style="white-space:nowrap">全部 {{ reviewCount }} 題</span></button></div>
+              <sc-if value="{{ noReview }}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;color:var(--color-neutral-700)">這段期間沒有答錯兩次以上的題目。</div></sc-if>
+              <sc-for list="{{ reviewTop }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider)"><a href="{{ r.url }}" target="_blank" style="font-weight:600;font-size:14px">{{ r.qno }}</a><span style="font-size:12px;color:var(--color-neutral-700);margin-right:auto">{{ r.combo }} · {{ r.first }}</span><span class="tag tag-accent">錯 {{ r.wrongs }} 次</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- 組合詳情 -->
+        <sc-if value="{{ pgDetail }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ pills }}" as="p" hint-placeholder-count="6"><button class="btn" onClick="{{ p.onClick }}" style="background:{{ p.bg }};color:{{ p.color }};border:1px solid var(--color-divider);white-space:nowrap"><span>{{ p.key }}</span><span style="font-family:var(--font-body);font-size:12px;opacity:.8">{{ p.n }}</span></button></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px">
+            <sc-for list="{{ dKpis }}" as="k" hint-placeholder-count="5">
+              <div class="card" style="padding:18px 20px;gap:4px;background:{{ k.bg }}"><div style="font-size:12px;color:var(--color-neutral-700)">{{ k.label }}</div><div style="font-family:var(--font-heading);font-size:30px;line-height:1.1">{{ k.value }}</div><div style="font-size:12px;color:var(--color-neutral-700)">{{ k.sub }}</div></div>
+            </sc-for>
+          </div>
+          <div class="card" style="padding:24px 26px;gap:16px">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><span class="card-title" style="margin-right:auto">{{ dKey }} 答對率趨勢</span><span style="display:flex;align-items:center;gap:6px;font-size:12px"><i style="width:18px;border-top:2px dashed var(--color-accent-2-600)"></i>升級門檻 {{ thrAccText }}</span></div>
+            <div style="display:grid;grid-template-columns:36px 1fr;gap:8px">
+              <div style="position:relative;height:220px;font-size:11px;color:var(--color-neutral-700)"><sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="4"><span style="position:absolute;right:0;top:{{ y.top }};transform:translateY(-50%)">{{ y.label }}</span></sc-for></div>
+              <div style="position:relative;height:220px">
+                <sc-for list="{{ yTicks }}" as="y" hint-placeholder-count="4"><div style="position:absolute;left:0;right:0;top:{{ y.top }};border-top:1px solid var(--color-divider)"></div></sc-for>
+                <div style="position:absolute;left:0;right:0;top:{{ thrTop }};border-top:2px dashed var(--color-accent-2-600)"></div>
+                <svg viewBox="0 0 600 220" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible"><polyline points="{{ dPts }}" fill="none" stroke="var(--color-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>
+                <sc-for list="{{ dDots }}" as="o" hint-placeholder-count="4"><div style="position:absolute;left:{{ o.left }};top:{{ o.top }};transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:var(--color-bg);border:3px solid var(--color-accent)"><span style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap">{{ o.label }}</span></div></sc-for>
+              </div>
+              <div></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-neutral-700)"><sc-for list="{{ dBuckets }}" as="b" hint-placeholder-count="4"><span style="flex:1;text-align:center;min-width:0;overflow:hidden;white-space:nowrap">{{ b.label }}<span style="display:block;opacity:.8">{{ b.n }} 題</span></span></sc-for></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+            <div class="card" style="padding:22px 24px;gap:14px">
+              <span class="card-title">平均思考時間</span>
+              <sc-for list="{{ dTime }}" as="t" hint-placeholder-count="2">
+                <div style="display:grid;grid-template-columns:64px 1fr 52px;align-items:center;gap:10px;font-size:13px"><span>{{ t.label }}</span><div style="height:16px;border-radius:999px;background:var(--color-neutral-200)"><div style="height:100%;width:{{ t.w }};border-radius:999px;background:{{ t.color }}"></div></div><span style="font-weight:700;text-align:right">{{ t.value }}</span></div>
+              </sc-for>
+              <div style="font-size:13px;color:var(--color-neutral-700)">錯題／答對題用時比 {{ dRatio }}</div>
+            </div>
+            <div class="card" style="padding:22px 24px;gap:14px">
+              <span class="card-title">錯題的速度</span>
+              <sc-for list="{{ dSpeed }}" as="t" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:84px 1fr 72px;align-items:center;gap:10px;font-size:13px"><span>{{ t.label }}</span><div style="height:16px;border-radius:999px;background:var(--color-neutral-200)"><div style="height:100%;width:{{ t.w }};border-radius:999px;background:{{ t.color }}"></div></div><span style="font-weight:700;text-align:right">{{ t.value }}</span></div>
+              </sc-for>
+              <div style="font-size:12px;color:var(--color-neutral-700);text-wrap:pretty">難題本來就想得久，慢錯多不一定代表想太久才答錯。</div>
+            </div>
+            <div class="card" style="padding:22px 24px;gap:12px">
+              <span class="card-title">重做題</span>
+              <sc-for list="{{ dRedo }}" as="t" hint-placeholder-count="3">
+                <div style="display:flex;align-items:baseline;gap:10px;font-size:14px;padding:4px 0;border-bottom:1px solid var(--color-divider)"><span style="margin-right:auto">{{ t.label }}</span><span style="font-family:var(--font-heading);font-size:20px">{{ t.value }}</span><span style="font-size:12px;color:var(--color-neutral-700);min-width:64px;text-align:right">{{ t.sub }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card" style="padding:14px 20px 18px;gap:8px">
+            <span class="card-title" style="padding:8px 0 4px">最近答錯的題目</span>
+            <div style="overflow-x:auto">
+              <table class="table" style="min-width:600px">
+                <thead><tr><th>日期</th><th>題號</th><th>先手</th><th style="text-align:right">秒數</th><th>這題第幾次做</th><th></th></tr></thead>
+                <tbody><sc-for list="{{ dWrong }}" as="r" hint-placeholder-count="6"><tr><td>{{ r.date }}</td><td><span style="display:flex;align-items:center;gap:6px;font-weight:700">{{ r.qno }}<sc-if value="{{ r.ov }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent-2">已修改</span></sc-if></span></td><td>{{ r.first }}</td><td style="text-align:right">{{ r.sec }}s</td><td>{{ r.nth }}</td><td style="text-align:right"><span style="display:inline-flex;gap:4px;align-items:center"><button class="btn btn-ghost" style="white-space:nowrap" onClick="{{ r.edit }}">修改分類</button><a href="{{ r.url }}" target="_blank" style="white-space:nowrap">到 101 重做</a></span></td></tr></sc-for></tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- 錯題複習 -->
+        <sc-if value="{{ pgReview }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="min-width:180px"><label>組合</label><select class="input" value="{{ rvCombo }}" onChange="{{ onRvCombo }}"><sc-for list="{{ rvComboOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select></div>
+            <div class="field"><label>先手</label><div class="seg"><sc-for list="{{ rvFirstOpts }}" as="p" hint-placeholder-count="3"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }}">{{ p.label }}</button></sc-for></div></div>
+            <div class="field"><label>答錯次數</label><div class="seg"><sc-for list="{{ rvMinOpts }}" as="p" hint-placeholder-count="2"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div></div>
+            <div style="margin-left:auto;font-size:14px;color:var(--color-neutral-700)">{{ rvCountText }}</div>
+          </div>
+          <sc-if value="{{ rvEmpty }}" hint-placeholder-val="{{ false }}"><div class="card" style="padding:32px;font-size:15px">沒有符合條件的題目。</div></sc-if>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px">
+            <sc-for list="{{ rvList }}" as="r" hint-placeholder-count="6">
+              <div class="card" style="padding:20px 22px;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px"><span style="font-family:var(--font-heading);font-size:20px;margin-right:auto">{{ r.qno }}</span><span class="tag tag-accent">錯 {{ r.wrongs }} 次</span></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag tag-neutral">{{ r.combo }}</span><span class="tag tag-neutral">{{ r.first }}</span><sc-if value="{{ r.ov }}" hint-placeholder-val="{{ false }}"><span class="tag tag-accent-2">已修改</span></sc-if></div>
+                <div style="font-size:13px;color:var(--color-neutral-700)">做過 {{ r.tries }} 次 · 最近 {{ r.lastDate }} {{ r.lastRes }} · 平均 {{ r.avgSec }}s</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px">
+                  <a class="btn btn-primary" href="{{ r.url }}" target="_blank" style="white-space:nowrap"><span>到 101 重做</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
+                  <button class="btn btn-ghost" style="white-space:nowrap" onClick="{{ r.edit }}">修改分類</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- 同步 -->
+        <sc-if value="{{ pgSync }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">
+            <div class="card" style="padding:24px 26px;gap:12px">
+              <div style="font-size:12px;color:var(--color-neutral-700)">101 帳號</div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-family:var(--font-heading);font-size:24px;margin-right:auto">{{ wqName }}</span><span class="tag {{ syncTagClass }}">{{ syncTagText }}</span></div>
+              <div style="font-size:13px;color:var(--color-neutral-700);text-wrap:pretty">上次同步 {{ lastSyncText }}。第一次同步時會綁定當時登入的 101 帳號，之後只接受這個帳號的資料。</div>
+              <a class="btn btn-primary" href="https://www.101weiqi.com/task/" target="_blank" style="align-self:flex-start;white-space:nowrap;padding:12px 22px">開啟 101「我的作業」</a>
+            </div>
+            <div class="card" style="padding:24px 26px;gap:10px">
+              <span class="card-title">怎麼同步</span>
+              <sc-for list="{{ syncSteps }}" as="t" hint-placeholder-count="4">
+                <div style="display:flex;gap:12px;align-items:flex-start;font-size:14px"><span style="width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--color-bg)">{{ t.no }}</span><span style="padding-top:3px;text-wrap:pretty">{{ t.text }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ bigGap }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:16px 22px;border-radius:28px;background:var(--color-accent-200);color:var(--color-accent-900);font-size:14px;text-wrap:pretty">{{ gapText }}</div>
+          </sc-if>
+          <div class="card" style="padding:14px 20px 18px;gap:8px">
+            <span class="card-title" style="padding:8px 0 4px">擷取紀錄</span>
+            <sc-if value="{{ noLogs }}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;color:var(--color-neutral-700);padding-bottom:6px">還沒有同步過。</div></sc-if>
+            <div style="overflow-x:auto">
+              <table class="table" style="min-width:600px">
+                <thead><tr><th>時間</th><th style="text-align:right">新增作業</th><th style="text-align:right">新增題數</th><th style="text-align:right">讀到題目資訊</th><th style="text-align:right">未取得</th><th>狀態</th></tr></thead>
+                <tbody><sc-for list="{{ logs }}" as="l" hint-placeholder-count="5"><tr><td>{{ l.when }}</td><td style="text-align:right">{{ l.a }}</td><td style="text-align:right">{{ l.q }}</td><td style="text-align:right">{{ l.pf }}</td><td style="text-align:right">{{ l.miss }}</td><td><span class="tag {{ l.tagClass }}">{{ l.status }}</span></td></tr></sc-for></tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- 設定 -->
+        <sc-if value="{{ pgSettings }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="card" style="padding:24px 26px;gap:14px">
+                <span class="card-title">個人資料</span>
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:999px;background:var(--color-bg);flex-wrap:wrap"><span style="font-size:12px;color:var(--color-neutral-700)">登入代碼</span><span style="font-family:var(--font-heading);font-size:20px;letter-spacing:.1em;margin-right:auto;white-space:nowrap">{{ myCode }}</span><button class="btn btn-ghost" onClick="{{ copyCode }}">複製</button></div>
+                <div style="font-size:12px;color:var(--color-neutral-700);margin-top:-6px;text-wrap:pretty">在其他裝置用這組代碼登入。代碼等同密碼，請勿分享。101 帳號：{{ wqName }}</div>
+                <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px">
+                  <div class="field"><label>姓名</label><input class="input" value="{{ profName }}" onChange="{{ onProfName }}"></div>
+                  <div class="field"><label>目前等級</label><input class="input" value="{{ profLevel }}" onChange="{{ onProfLevel }}" placeholder="例如 11K"></div>
+                </div>
+                <button class="btn btn-primary" style="align-self:flex-start" disabled="{{ busy }}" onClick="{{ saveProf }}">儲存</button>
+              </div>
+              <div class="card" style="padding:24px 26px;gap:16px">
+                <div><span class="card-title">預設門檻、快慢答與趨勢</span><div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px;text-wrap:pretty">一個等級 × 題型組合的答對率與題數都達標，就標示「可升級」。這裡是所有題型的預設值，各題型可在下方「題型分類」按「調整門檻」個別設定。趨勢取各區間（週或日）答對率的斜率：高於閾值為進步，低於負閾值為退步，其間為持平。</div></div>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+                  <sc-for list="{{ setFields }}" as="f" hint-placeholder-count="4">
+                    <div class="field"><label>{{ f.label }}</label><div style="display:flex;align-items:center;gap:8px"><input class="input" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}"><span style="font-size:13px;color:var(--color-neutral-700)">{{ f.unit }}</span></div></div>
+                  </sc-for>
+                </div>
+                <button class="btn btn-primary" style="align-self:flex-start" disabled="{{ busy }}" onClick="{{ saveThresholds }}">儲存門檻</button>
+              </div>
+            </div>
+            <div class="card" style="padding:24px 26px;gap:14px">
+              <div><span class="card-title">題型分類</span><div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px;text-wrap:pretty">每題依 101 題目頁面標示的題型歸類；有設定作業本名稱的題型，作業名稱含有這些字的整份作業都計入該題型。設為「只計錯題」的題型不計入答對率與題數統計，答錯的題目仍會列在錯題中。預設依等級拆開列出（例如 10K 死活、11K 死活）；勾選兩個以上可合併成新組合，合併後的組合可再按「拆分」還原。</div></div>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="5">
+                  <div style="display:flex;flex-direction:column;gap:8px;padding:14px 0;border-top:1px solid var(--color-divider)">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <input type="checkbox" aria-label="選取以合併" checked="{{ c.checked }}" onChange="{{ c.onSel }}" style="width:20px;height:20px;accent-color:var(--color-accent-500);flex:none;cursor:pointer">
+                      <input class="input" aria-label="題型名稱" value="{{ c.name }}" onChange="{{ c.onName }}" onBlur="{{ c.onNameBlur }}" style="flex:1;min-width:0;font-weight:600">
+                      <span style="font-size:13px;color:var(--color-neutral-700);white-space:nowrap;flex:none">{{ c.count }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-left:30px">
+                      <span style="font-size:12px;color:var(--color-neutral-700);margin-right:auto;text-wrap:pretty;min-width:0">{{ c.src }} · {{ c.thTag }}</span>
+                      <button class="btn btn-ghost" style="white-space:nowrap;flex:none" onClick="{{ c.onTh }}">{{ c.thBtn }}</button>
+                      <div class="seg"><sc-for list="{{ c.showOpts }}" as="p" hint-placeholder-count="2"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div>
+                      <sc-if value="{{ c.canSplit }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" style="white-space:nowrap;flex:none" disabled="{{ busy }}" onClick="{{ c.onSplit }}">拆分</button></sc-if>
+                      <button class="btn btn-ghost" style="white-space:nowrap;flex:none" onClick="{{ c.onDel }}">刪除</button>
+                    </div>
+                    <sc-if value="{{ c.thOpen }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:12px;margin-left:30px;padding:16px 18px;border-radius:24px;background:var(--color-bg)">
+                        <div style="font-size:12px;color:var(--color-neutral-700);text-wrap:pretty">留空的欄位沿用預設門檻。</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+                          <sc-for list="{{ c.thFields }}" as="f" hint-placeholder-count="5">
+                            <div class="field"><label>{{ f.label }}（{{ f.unit }}）</label><input class="input" type="number" min="0" value="{{ f.value }}" placeholder="{{ f.ph }}" onChange="{{ f.onChange }}"></div>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                          <button class="btn btn-primary" style="white-space:nowrap" disabled="{{ busy }}" onClick="{{ c.thSave }}">儲存門檻</button>
+                          <button class="btn btn-ghost" style="white-space:nowrap" disabled="{{ busy }}" onClick="{{ c.thReset }}">改用預設</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ canMerge }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:16px 20px;border-radius:28px;background:var(--color-bg)">
+                  <div class="field" style="flex:1;min-width:180px"><label>把勾選的 {{ selCount }} 個題型合併為</label><input class="input" value="{{ mergeName }}" onChange="{{ onMergeName }}" placeholder="新組合名稱，例如 對殺吃子"></div>
+                  <button class="btn btn-primary" style="white-space:nowrap" disabled="{{ busy }}" onClick="{{ doMerge }}">合併</button>
+                  <button class="btn btn-ghost" style="white-space:nowrap" onClick="{{ clearSel }}">取消選取</button>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:10px;padding-top:14px;border-top:1px solid var(--color-divider)">
+                <span style="font-weight:700;font-size:14px">新增題型</span>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+                  <div class="field"><label>題型名稱</label><input class="input" value="{{ ncName }}" onChange="{{ onNcName }}" placeholder="例如 死活速刷"></div>
+                  <div class="field"><label>對應的作業本名稱</label><input class="input" value="{{ ncBooks }}" onChange="{{ onNcBooks }}" placeholder="多個用逗號分隔"></div>
+                </div>
+                <button class="btn btn-secondary" style="align-self:flex-start;white-space:nowrap" disabled="{{ busy }}" onClick="{{ addCat }}">新增題型</button>
+              </div>
+              <div class="field" style="padding-top:6px"><label>抓不到題目等級時</label><div class="seg"><sc-for list="{{ fbOpts }}" as="p" hint-placeholder-count="2"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div></div>
+            </div>
+          </div>
+        </sc-if>
+      </main>
+    </div>
+  </div>
+
+  <sc-if value="{{ mobile }}" hint-placeholder-val="{{ false }}">
+    <nav style="position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--color-surface);box-shadow:var(--shadow-lg);padding:6px 6px calc(6px + env(safe-area-inset-bottom))">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+        <button onClick="{{ n.onClick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;justify-content:center;border:0;border-radius:18px;background:{{ n.bg }};color:{{ n.color }};font-size:11px;font-weight:600;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>{{ n.label }}</button>
+      </sc-for>
+    </nav>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ hasEditing }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="z-index:20" onClick="{{ closeEdit }}">
+    <div class="dialog" onClick="{{ stop }}">
+      <div class="dialog-title">修改 {{ edPid }} 的分類</div>
+      <div class="dialog-body">101 標示為 {{ edOrig }}。修改後只影響這道題在統計中的歸類，優先於作業本與 101 的題型。</div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+        <div class="field"><label>等級</label><input class="input" value="{{ edLv }}" onChange="{{ onEdLv }}" placeholder="例如 10K"></div>
+        <div class="field"><label>題型</label><select class="input" value="{{ edRaw }}" onChange="{{ onEdRaw }}"><sc-for list="{{ rawOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select></div>
+      </div>
+      <div class="dialog-actions">
+        <sc-if value="{{ edHasOv }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" style="margin-right:auto" onClick="{{ edReset }}">改回 101 的分類</button></sc-if>
+        <button class="btn btn-secondary" onClick="{{ closeEdit }}">取消</button>
+        <button class="btn btn-primary" disabled="{{ busy }}" onClick="{{ saveEdit }}">儲存</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasDel }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="z-index:20" onClick="{{ closeDel }}">
+    <div class="dialog" role="alertdialog" onClick="{{ stop }}">
+      <div class="dialog-title">刪除「{{ delName }}」？</div>
+      <div class="dialog-body" style="text-wrap:pretty">{{ delBody }}</div>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;cursor:pointer"><input type="checkbox" checked="{{ delOk }}" onChange="{{ onDelOk }}" style="width:20px;height:20px;accent-color:var(--color-accent-500);flex:none;margin:0"><span>我確定要刪除這個題型</span></label>
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" onClick="{{ closeDel }}">取消</button>
+        <button class="btn btn-primary" disabled="{{ delDisabled }}" onClick="{{ doDel }}">確定</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);padding:12px 22px;border-radius:999px;background:var(--color-text);color:var(--color-bg);font-size:14px;box-shadow:var(--shadow-lg);z-index:30;max-width:90vw;text-align:center">{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;staleDays&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:3,&quot;min&quot;:1,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;顯示&quot;},&quot;comboMinCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10,&quot;min&quot;:0,&quot;max&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;顯示&quot;}}">
+const DAY = 864e5;
+const pad = n => String(n).padStart(2, '0');
+const tp = d => new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+const TODAY = (() => { const n = tp(new Date()); n.setHours(0, 0, 0, 0); return n; })();
+const dt = d => new Date(TODAY.getTime() - d * DAY);
+const md = d => { const x = dt(d); return (x.getMonth() + 1) + '/' + x.getDate(); };
+const iso = d => { const x = dt(d); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+const offOf = s => Math.round((TODAY - new Date(String(s).slice(0, 10) + 'T00:00:00')) / DAY);
+const pct = v => Math.round(v) + '%';
+const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
+const DEF = { acc: 90, n: 100, fast: 8, slow: 20, trend: 2 };
+const TH_FIELDS = [['acc', '升級答對率', '%'], ['n', '升級題數', '題'], ['fast', '快答上限', '秒'], ['slow', '慢答下限', '秒'], ['trend', '趨勢閾值 ±', '%']];
+const slopeOf = vals => {
+  const p = vals.map((v, i) => [i, v]).filter(x => x[1] != null);
+  if (p.length < 2) return null;
+  const mx = p.reduce((a, x) => a + x[0], 0) / p.length, my = p.reduce((a, x) => a + x[1], 0) / p.length;
+  const num = p.reduce((a, x) => a + (x[0] - mx) * (x[1] - my), 0), den = p.reduce((a, x) => a + (x[0] - mx) ** 2, 0);
+  return den ? num / den : null;
+};
+const RAW_DEFAULT = ['死活題', '對殺題', '吃子題', '官子題', '手筋題'];
+const OUT = ['死活', '對殺', '吃子', '官子', '手筋', '對殺吃子', '布局', '其他'];
+const PAL = ['var(--color-accent-500)', 'var(--color-accent-2-500)', 'var(--color-accent-300)', 'var(--color-neutral-500)', 'var(--color-accent-2-300)', 'var(--color-accent-2-700)', 'var(--color-accent-700)', 'var(--color-neutral-300)'];
+let CAT_ORDER = OUT.slice();
+const colorOf = t => PAL[(CAT_ORDER.indexOf(t) + PAL.length) % PAL.length];
+const lvRank = l => { const m = /^(\d+)([KD])$/.exec(l || ''); return m ? (m[2] === 'K' ? -Number(m[1]) : Number(m[1])) : 999; };
+const sortLv = a => a.slice().sort((x, y) => lvRank(x) - lvRank(y));
+const nk = s => String(s || '').replace(/题/g, '題').trim();
+const cleanLv = s => s ? String(s).replace(/\+/g, '').trim().toUpperCase() : '';
+const defType = raw => raw ? String(raw).replace(/[题題]$/, '') : '未分類';
+const when = t => {
+  if (!t) return '尚未同步';
+  const x = tp(new Date(t)), d0 = new Date(x); d0.setHours(0, 0, 0, 0);
+  const days = Math.round((TODAY - d0) / DAY), hm = pad(x.getHours()) + ':' + pad(x.getMinutes());
+  return days <= 0 ? '今天 ' + hm : days === 1 ? '昨天 ' + hm : (x.getMonth() + 1) + '/' + x.getDate() + ' ' + hm;
+};
+const staleOf = t => t ? Math.max(0, Math.floor((Date.now() - new Date(t)) / DAY)) : null;
+const ICON = {
+  overview: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  detail: 'M3 3v16a2 2 0 0 0 2 2h16M19 9l-5 5-4-4-3 3',
+  review: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5',
+  sync: 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5',
+  settings: 'M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4'
+};
+const LABEL = { overview: '總覽', detail: '組合詳情', review: '錯題複習', sync: '同步', settings: '設定' };
+
+class Component extends DCLogic {
+  state = {
+    boot: true, fatal: '', demo: false, profile: null, rows: [], rowsSince: null, loading: false, logs: [],
+    page: 'overview', period: '4w', cFrom: iso(41), cTo: iso(0), combo: null, rvCombo: '全部', rvFirst: '全部', rvMin: 2,
+    w: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    myCode: '', f: { code: '' }, authErr: '', authMsg: '', busy: false,
+    toast: '', editing: null, setDraft: Object.assign({}, DEF), catSel: {}, renames: {}, thOpen: null, thDraft: {}, mergeName: '', nc: { name: '', books: '' }, delCat: null, delOk: false, prof: { display_name: '', level: '' }
+  };
+  componentDidMount() {
+    this.onResize = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('resize', this.onResize);
+    this.boot();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); clearTimeout(this.toastT); }
+  componentDidUpdate() {
+    const s = this.state;
+    if (s.period !== 'custom' || !s.profile || s.loading || !s.rowsSince) return;
+    const a = offOf(s.cFrom), b = offOf(s.cTo); if (isNaN(a) || isNaN(b)) return;
+    const need = iso(Math.max(a, b) + Math.abs(a - b) + 1);
+    if (need < s.rowsSince && need !== this.lastNeed) { this.lastNeed = need; this.load(need); }
+  }
+  toast(m) { clearTimeout(this.toastT); this.setState({ toast: m }); this.toastT = setTimeout(() => this.setState({ toast: '' }), 3000); }
+  async waitApi() {
+    for (let i = 0; i < 100; i++) {
+      if (window.WQBoot && window.WQ_CONFIG && (window.WQIsDemo() || window.supabase)) return window.WQBoot();
+      await new Promise(r => setTimeout(r, 100));
+    }
+    throw new Error('載入失敗：請確認 config.js、api.js 與網路連線。');
+  }
+  async boot() {
+    try {
+      this.api = await this.waitApi();
+      this.setState({ demo: this.api.demo });
+      const p = await this.api.current();
+      if (p) await this.enter(p);
+    } catch (e) { this.setState({ fatal: e.message }); }
+    this.setState({ boot: false });
+  }
+  async enter(profile) {
+    const myCode = await this.api.myCode();
+    this.setState({ profile, myCode, f: { code: '' }, page: 'overview', prof: { display_name: profile.display_name || '', level: profile.level || '' },
+      setDraft: Object.assign({}, DEF, profile.settings || {}), catSel: {}, renames: {} });
+    await this.load();
+  }
+  async load(since) {
+    since = since || iso(200);
+    this.setState({ loading: true });
+    try {
+      const [rows, logs] = await Promise.all([this.api.rows(since), this.api.logs()]);
+      this.setState({ rows, logs, rowsSince: since, loading: false });
+    } catch (e) { this.setState({ loading: false }); this.toast('讀取失敗：' + e.message); }
+  }
+  async run(fn, okMsg) {
+    this.setState({ busy: true });
+    try { await fn(); if (okMsg) this.toast(okMsg); } catch (e) { this.toast(e.message); }
+    this.setState({ busy: false });
+  }
+  async doAuth(demoCode) {
+    const code = demoCode || String(this.state.f.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!demoCode && code.length !== 12) return this.setState({ authErr: '登入代碼是 12 碼英文與數字。' });
+    this.setState({ busy: true, authErr: '' });
+    try { await this.enter(await this.api.signIn(code)); } catch (e) { this.setState({ authErr: e.message }); }
+    this.setState({ busy: false });
+  }
+  async logout() {
+    await this.api.signOut();
+    this.setState({ profile: null, myCode: '', rows: [], logs: [], rowsSince: null, f: { code: '' }, page: 'overview' });
+  }
+  patchRows(pid, lv, raw) { this.setState(s => ({ rows: s.rows.map(r => r.problem_id === pid ? Object.assign({}, r, { ov_levelname: lv, ov_qtypename: raw }) : r) })); }
+  lvOf(r) { const p = this.state.profile; return cleanLv(r.ov_levelname || r.levelname) || (p.use_fallback !== false ? cleanLv(r.difficulty) : ''); }
+  cfgOf() {
+    const s = this.state, p = s.profile;
+    if (this._c && this._c.rows === s.rows && this._c.p === p) return this._c.cfg;
+    const tm = p.type_map || {}; let cfg;
+    const seen = {}; s.rows.forEach(r => { const raw = nk(r.qtypename), lv = this.lvOf(r); if (raw && lv) (seen[raw] = seen[raw] || new Set()).add(lv); });
+    const lvsOf = raws => sortLv([...new Set(raws.flatMap(r => [...(seen[r] || [])]))]);
+    const fix = c => Object.assign({ raws: [], books: [], lvs: [], show: true }, c);
+    if (tm.v === 3) cfg = { v: 3, cats: (tm.cats || []).map(fix), removed: (tm.removed || []).slice() };
+    else {
+      let base;
+      if (tm.v === 2) base = (tm.cats || []).map(fix);
+      else {
+        const old = {}; Object.keys(tm).forEach(k => { old[nk(k)] = tm[k]; });
+        const g = {}; [...new Set(RAW_DEFAULT.concat(Object.keys(seen)))].forEach(raw => { const n = old[raw] || defType(raw); (g[n] = g[n] || []).push(raw); });
+        base = Object.keys(g).map((n, i) => fix({ id: 'c' + i, name: n, raws: g[n] }));
+      }
+      const cats = [];
+      base.forEach(c => {
+        if (c.books.length || !c.raws.length) { cats.push(c); return; }
+        lvsOf(c.raws).forEach(lv => cats.push(fix({ id: c.id + '_' + lv, name: lv + ' ' + c.name, raws: c.raws.slice(), lvs: [lv], show: c.show, th: c.th })));
+      });
+      cfg = { v: 3, cats, removed: (tm.removed || []).map(r => r.includes('|') ? r : '*|' + r) };
+    }
+    const covered = (raw, lv) => cfg.cats.some(c => c.raws.includes(raw) && (!c.lvs.length || c.lvs.includes(lv)));
+    const rm = new Set(cfg.removed);
+    const add = [];
+    Object.keys(seen).forEach(raw => [...seen[raw]].forEach(lv => {
+      if (covered(raw, lv) || rm.has(lv + '|' + raw) || rm.has('*|' + raw)) return;
+      add.push(fix({ id: 'a' + lv + raw, name: lv + ' ' + defType(raw), raws: [raw], lvs: [lv] }));
+    }));
+    if (add.length) {
+      const ti = c => { const i = RAW_DEFAULT.indexOf(c.raws[0]); return i < 0 ? 99 : i; };
+      cfg.cats = cfg.cats.concat(add);
+      const auto = cfg.cats.filter(c => c.lvs.length === 1 && c.raws.length === 1 && !c.books.length);
+      if (auto.length === cfg.cats.length) cfg.cats.sort((a, b) => ti(a) - ti(b) || lvRank(a.lvs[0]) - lvRank(b.lvs[0]));
+    }
+    this._c = { rows: s.rows, p, cfg };
+    return cfg;
+  }
+  norm() {
+    const s = this.state, p = s.profile;
+    if (this._n && this._n.rows === s.rows && this._n.p === p) return this._n.out;
+    const useFb = p.use_fallback !== false, cfg = this.cfgOf();
+    CAT_ORDER = [...new Set(OUT.concat(cfg.cats.filter(c => c.books.length).map(c => c.name)))];
+    const byName = {}; cfg.cats.forEach(c => { byName[c.name] = c; });
+    const bookCats = cfg.cats.filter(c => c.books.length);
+    const match = (raw, lv) => cfg.cats.find(c => !c.books.length && c.raws.includes(raw) && (!c.lvs.length || c.lvs.includes(lv))) || null;
+    const out = [], last = {}, cnt = {};
+    for (const r of s.rows) {
+      const raw = nk(r.qtypename);
+      const plv = cleanLv(r.ov_levelname || r.levelname);
+      const prev = last[r.problem_id]; last[r.problem_id] = r.ok; cnt[r.problem_id] = (cnt[r.problem_id] || 0) + 1;
+      const lv = plv || (useFb ? cleanLv(r.difficulty) : '');
+      if (!lv) continue;
+      const ovRaw = r.ov_qtypename && !byName[r.ov_qtypename] ? nk(r.ov_qtypename) : '';
+      let c = r.ov_qtypename ? (byName[r.ov_qtypename] || match(ovRaw, lv)) : null;
+      if (!c && r.task_name) c = bookCats.find(b => b.books.some(k => r.task_name.includes(k))) || null;
+      const eRaw = ovRaw || raw;
+      if (!c) c = match(eRaw, lv);
+      if (!c && eRaw) continue;
+      out.push({ d: offOf(r.task_day), aid: r.task_id, pid: r.problem_id, pub: r.publicid, qno: r.publicid ? 'Q-' + r.publicid : '#' + r.problem_id, url: r.publicid ? `https://www.101weiqi.com/q/${r.publicid}/` : r.upageid ? `https://www.101weiqi.com/task/${r.upageid}/${r.task_id}/${r.idx}/` : `https://www.101weiqi.com/task/`, raw, lv, type: c ? c.name : '未分類', key: c && c.lvs.length ? c.name : lv + ' ' + (c ? c.name : '未分類'), vt: c && c.books.length ? c.name : defType(eRaw), hidden: c ? !c.show : false, ok: r.ok, sec: r.sec,
+        first: r.blackfirst === true ? '黑先' : r.blackfirst === false ? '白先' : '未取得', prev, nth: cnt[r.problem_id],
+        ov: !!(r.ov_levelname || r.ov_qtypename), orig: (r.levelname || r.difficulty || '?') + ' ' + (r.qtypename || '未取得') });
+    }
+    this._n = { rows: s.rows, p, out };
+    return out;
+  }
+  stats(arr, S) {
+    const ok = arr.filter(x => x.ok), bad = arr.filter(x => !x.ok);
+    const avg = a => a.length ? a.reduce((t, x) => t + x.sec, 0) / a.length : 0;
+    const pb = arr.filter(x => x.prev === false), po = arr.filter(x => x.prev === true);
+    return { n: arr.length, nOk: ok.length, nBad: bad.length, acc: arr.length ? ok.length / arr.length * 100 : 0, okT: avg(ok), badT: avg(bad),
+      fast: bad.filter(x => x.sec <= ((this._thBy || {})[x.type] || S).fast).length, slow: bad.filter(x => x.sec >= ((this._thBy || {})[x.type] || S).slow).length,
+      redo: pb.length + po.length, pb: pb.length, pbBad: pb.filter(x => !x.ok).length, po: po.length, poBad: po.filter(x => !x.ok).length };
+  }
+  renderVals() {
+    const s = this.state, P = this.props;
+    const staleLimit = P.staleDays ?? 3, minCount = P.comboMinCount ?? 10;
+    const mobile = s.w < 760;
+    const seg = (cur, val, label, set) => ({ label, onClick: set, bg: cur === val ? 'var(--color-accent)' : 'transparent', color: cur === val ? 'var(--color-bg)' : 'var(--color-text)' });
+    const setF = k => e => this.setState({ f: Object.assign({}, this.state.f, { [k]: e.target.value }), authErr: '' });
+    const base = {
+      booting: s.boot, hasFatal: !s.boot && !!s.fatal, fatal: s.fatal, demo: s.demo, mobile, desktop: !mobile,
+      showAuth: !s.boot && !s.fatal && !s.profile, showApp: !s.boot && !s.fatal && !!s.profile,
+      toast: s.toast, hasToast: !!s.toast, busy: s.busy,
+      authCols: mobile ? '1fr' : 'minmax(0,1.1fr) minmax(0,1fr)',
+      fCode: s.f.code || '', onFCode: setF('code'), onCodeKey: e => { if (e.key === 'Enter') this.doAuth(); },
+      codeSteps: ['在電腦版 Chrome 或 Edge 安裝「本手同步」擴充功能。', '開啟 101「我的作業」並登入 101，按右下角「同步到本手」。', '同步完成後會顯示一組 12 碼登入代碼，用它登入這裡。'].map((text, i) => ({ no: i + 1, text })),
+      authErr: s.authErr, hasAuthErr: !!s.authErr, authMsg: s.authMsg, hasAuthMsg: !!s.authMsg,
+      doAuth: () => this.doAuth(), demoLogin: () => this.doAuth('DEMO'),
+      hasEditing: false, hasDel: false, stop: e => e.stopPropagation()
+    };
+    if (!s.profile) return base;
+
+    const me = s.profile;
+    const go = page => () => this.setState({ page });
+    const navItems = Object.keys(LABEL).map(k => ({ label: LABEL[k], d: ICON[k], onClick: go(k), bg: s.page === k ? 'var(--color-accent-200)' : 'transparent', color: s.page === k ? 'var(--color-accent-800)' : 'var(--color-text)' }));
+    const lastSyncAt = (s.logs[0] && s.logs[0].created_at) || me.last_synced_at;
+    const stale = staleOf(lastSyncAt);
+    const showPeriod = ['overview', 'detail', 'review'].includes(s.page);
+    const S = Object.assign({}, DEF, me.settings || {});
+
+    let d0, d1 = 0;
+    if (s.period === '1w') d0 = 6; else if (s.period === '4w') d0 = 27; else if (s.period === '3m') d0 = 90;
+    else { d0 = offOf(s.cFrom); d1 = offOf(s.cTo); if (isNaN(d0)) d0 = 27; if (isNaN(d1)) d1 = 0; if (d1 > d0) [d0, d1] = [d1, d0]; d1 = Math.max(0, d1); d0 = Math.max(d1, d0); }
+    const span = d0 - d1 + 1, buckets = [];
+    if (span <= 14) for (let d = d0; d >= d1; d--) buckets.push({ from: d, to: d, label: md(d) });
+    else { const many = Math.ceil(span / 7) > 6; for (let a = d0; a >= d1; a -= 7) { const to = Math.max(a - 6, d1); buckets.push({ from: a, to, label: many ? md(a) : md(a) + '–' + md(to) }); } }
+
+    const allN = this.norm(), all = allN.filter(x => !x.hidden);
+    const thBy = {}; this.cfgOf().cats.forEach(c => { thBy[c.name] = Object.assign({}, S, c.th || {}); }); this._thBy = thBy;
+    const sameTh = Object.values(thBy).every(t => t.acc === S.acc && t.n === S.n);
+    const winAll = allN.filter(x => x.d <= d0 && x.d >= d1);
+    const win = all.filter(x => x.d <= d0 && x.d >= d1);
+    const prevWin = all.filter(x => x.d > d0 && x.d <= d0 + span);
+    const T = this.stats(win, S), PT = this.stats(prevWin, S);
+    const hasData = T.n > 0;
+
+    const yOf = (v, H) => H - (v - 40) / 60 * H;
+    const linePts = (tr, W, H) => tr.map((v, i) => v == null ? null : `${(tr.length > 1 ? i * W / (tr.length - 1) : W / 2).toFixed(1)},${yOf(v, H).toFixed(1)}`).filter(Boolean).join(' ');
+    const groupsC = {}; win.forEach(x => { const k = x.key; (groupsC[k] = groupsC[k] || []).push(x); });
+    const combos = Object.entries(groupsC).map(([key, arr]) => {
+      const SC = thBy[arr[0].type] || S;
+      const t = this.stats(arr, S);
+      const trendB = buckets.map(b => { const a = arr.filter(x => x.d <= b.from && x.d >= b.to); return { n: a.length, v: a.length >= 3 ? a.filter(x => x.ok).length / a.length * 100 : null }; });
+      const up = t.acc >= SC.acc && t.n >= SC.n;
+      const sl = slopeOf(trendB.map(b => b.v)), unit = span <= 14 ? '天' : '週';
+      const tr = sl == null ? ['資料不足', 'tag-outline'] : sl > SC.trend ? ['進步', 'tag-accent-2'] : sl < -SC.trend ? ['退步', 'tag-accent'] : ['持平', 'tag-neutral'];
+      const slopeText = sl == null ? '至少要 2 個區間各 3 題以上' : (sl >= 0 ? '+' : '') + f1(sl) + '%／' + unit;
+      const gaps = []; if (t.acc < SC.acc) gaps.push('差 ' + Math.ceil(SC.acc - t.acc) + '%'); if (t.n < SC.n) gaps.push('差 ' + (SC.n - t.n) + ' 題');
+      return { key, S: SC, arr, t, trendB, up, gapAcc: Math.max(0, SC.acc - t.acc), gapN: Math.max(0, SC.n - t.n),
+        n: t.n, accPct: pct(t.acc), okT: f1(t.okT), badT: f1(t.badT), fastPct: t.nBad ? pct(t.fast / t.nBad * 100) : '—',
+        status: up ? '可升級' : gaps.join('、'), tagClass: up ? 'tag-accent-2' : 'tag-neutral',
+        trendText: tr[0], trendClass: tr[1], slopeText,
+        prog: Math.min(100, Math.round(Math.min(1, t.acc / SC.acc) * Math.min(1, t.n / SC.n) * 100)) + '%',
+        ptsS: linePts(trendB.map(b => b.v), 120, 36), thrS: yOf(SC.acc, 36).toFixed(1),
+        open: () => this.setState({ combo: key, page: 'detail' }) };
+    }).sort((a, b) => b.n - a.n);
+    const ovCombos = combos.filter(c => c.n >= minCount), hidden = combos.length - ovCombos.length;
+
+    const edit = x => () => this.setState({ editing: { pid: x.pid, qno: x.qno, lv: x.lv, raw: x.ov && x.raw ? x.raw : (x.vt === x.type ? x.type : (x.raw || RAW_DEFAULT[0])), orig: x.orig, ov: x.ov } });
+    const byPid = {}; winAll.forEach(x => { (byPid[x.pid] = byPid[x.pid] || []).push(x); });
+    const reviewAll = Object.values(byPid).map(a => { const L = a[a.length - 1]; return { pid: L.pid, qno: L.qno, tries: a.length, wrongs: a.filter(x => !x.ok).length,
+      combo: L.key, first: L.first, ov: L.ov, lastD: L.d, lastDate: md(L.d), lastRes: L.ok ? '答對' : '答錯',
+      avgSec: f1(a.reduce((t, x) => t + x.sec, 0) / a.length), url: L.url, edit: edit(L) }; })
+      .filter(r => r.wrongs >= 2).sort((a, b) => b.wrongs - a.wrongs || a.lastD - b.lastD);
+
+    const ups = combos.filter(c => c.up);
+    const near = combos.filter(c => !c.up && c.n >= c.S.n / 2).sort((a, b) => (a.gapAcc + a.gapN / 10) - (b.gapAcc + b.gapN / 10))[0];
+    const thrTxt = sameTh ? `答對率 ≥ ${S.acc}%、題數 ≥ ${S.n}` : '依各題型的門檻';
+    const upText = ups.length ? `${ups.map(c => c.key).join('、')} 已達升級門檻（${thrTxt}）。` + (near ? `${near.key} ${near.status}。` : '')
+      : near ? `目前沒有組合達到門檻（${thrTxt}）。最接近的是 ${near.key}：${pct(near.t.acc)}、${near.n} 題，${near.status}。` : `目前沒有組合達到門檻（${thrTxt}）。`;
+
+    const types = CAT_ORDER.concat([...new Set(win.map(x => x.vt))].filter(t => !CAT_ORDER.includes(t))).filter(t => win.some(x => x.vt === t));
+    const vb = buckets.map(b => { const a = win.filter(x => x.d <= b.from && x.d >= b.to); return { label: b.label, total: a.length, c: types.map(t => a.filter(x => x.vt === t).length) }; });
+    const maxV = Math.max(1, ...vb.map(b => b.total));
+    const vol = vb.map(b => ({ label: b.label, total: b.total, segs: b.c.map((v, i) => ({ h: Math.round(v / maxV * 140) + 'px', color: colorOf(types[i]) })) }));
+    const accDiff = prevWin.length ? Math.round(T.acc - PT.acc) : null;
+    const kpis = [
+      { label: '做題數', value: String(T.n), sub: new Set(win.map(x => x.aid)).size + ' 份作業' },
+      { label: '答對率', value: pct(T.acc), sub: accDiff == null ? '前一期無資料' : '比前一期 ' + (accDiff >= 0 ? '+' : '') + accDiff + '%' },
+      { label: '錯題／答對題用時', value: (T.okT ? f1(T.badT / T.okT) : '—') + '×', sub: f1(T.badT) + 's ／ ' + f1(T.okT) + 's' },
+      { label: '答錯兩次以上', value: reviewAll.length + ' 題', sub: '前次答錯再錯率 ' + (T.pb ? pct(T.pbBad / T.pb * 100) : '—') }
+    ];
+
+    const cur = combos.find(c => c.key === s.combo) || combos[0];
+    const detail = { dKey: '', pills: [], dKpis: [], dPts: '', dDots: [], dBuckets: [], dTime: [], dRatio: '', dSpeed: [], dRedo: [], dWrong: [] };
+    if (cur) {
+      const t = cur.t, B = cur.trendB, L = B.length, xs = i => L > 1 ? i / (L - 1) * 100 : 50;
+      Object.assign(detail, {
+        dKey: cur.key,
+        pills: combos.slice(0, 16).map(c => ({ key: c.key, n: c.n, onClick: () => this.setState({ combo: c.key }), bg: c.key === cur.key ? 'var(--color-accent)' : 'transparent', color: c.key === cur.key ? 'var(--color-bg)' : 'var(--color-text)' })),
+        thrAccText: cur.S.acc + '%', thrTop: ((100 - cur.S.acc) / 60 * 100) + '%',
+        dKpis: [
+          { label: '題數', value: String(t.n), sub: '答對 ' + t.nOk + '・答錯 ' + t.nBad },
+          { label: '答對率', value: pct(t.acc), sub: '門檻 ' + cur.S.acc + '%' },
+          { label: '升級', value: cur.up ? '可升級' : cur.prog, sub: cur.up ? '答對率與題數都已達標' : cur.status },
+          { label: '答對率趨勢', bg: ({ '進步': 'var(--color-accent-2-200)', '持平': 'var(--color-neutral-100)', '退步': 'var(--color-accent-100)' })[cur.trendText], value: cur.trendText, sub: cur.slopeText + ' · 閾值 ±' + cur.S.trend + '%' },
+          { label: '快錯占錯題', value: cur.fastPct, sub: '≤ ' + cur.S.fast + ' 秒就答錯' },
+          { label: '前次答錯再錯率', value: t.pb ? pct(t.pbBad / t.pb * 100) : '—', sub: t.pb + ' 題前次答錯' }
+        ].map(k => Object.assign({ bg: undefined }, k, { bg: k.bg || 'var(--color-surface)' })),
+        dPts: linePts(B.map(b => b.v), 600, 220),
+        dDots: B.map((b, i) => b.v == null ? null : { left: xs(i) + '%', top: ((100 - b.v) / 60 * 100) + '%', label: L <= 8 || i === L - 1 ? pct(b.v) : '' }).filter(Boolean),
+        dBuckets: B.map((b, i) => ({ label: buckets[i].label, n: b.n })),
+        dTime: [{ label: '答對題', value: f1(t.okT) + 's', w: Math.round(t.okT / Math.max(t.okT, t.badT, 1) * 100) + '%', color: 'var(--color-accent-2-500)' },
+          { label: '錯題', value: f1(t.badT) + 's', w: Math.round(t.badT / Math.max(t.okT, t.badT, 1) * 100) + '%', color: 'var(--color-accent)' }],
+        dRatio: t.okT ? f1(t.badT / t.okT) + '×' : '—',
+        dSpeed: [['快錯 ≤' + cur.S.fast + 's', t.fast, 'var(--color-accent)'], ['中間', t.nBad - t.fast - t.slow, 'var(--color-neutral-500)'], ['慢錯 ≥' + cur.S.slow + 's', t.slow, 'var(--color-accent-2-500)']]
+          .map(([label, v, color]) => ({ label, color, w: t.nBad ? Math.round(v / t.nBad * 100) + '%' : '0%', value: (t.nBad ? pct(v / t.nBad * 100) : '—') + ' · ' + v })),
+        dRedo: [{ label: '重做的題目', value: String(t.redo), sub: '之前做過' },
+          { label: '前次答錯，這次又錯', value: t.pb ? pct(t.pbBad / t.pb * 100) : '—', sub: t.pbBad + '／' + t.pb },
+          { label: '前次答對，這次答錯', value: t.po ? pct(t.poBad / t.po * 100) : '—', sub: t.poBad + '／' + t.po }],
+        dWrong: cur.arr.filter(x => !x.ok).slice(-8).reverse().map(x => ({ date: md(x.d), pid: x.pid, qno: x.qno, first: x.first, sec: x.sec, nth: '第 ' + x.nth + ' 次', ov: x.ov, url: x.url, edit: edit(x) }))
+      });
+    }
+    const rvFiltered = reviewAll.filter(r => (s.rvCombo === '全部' || r.combo === s.rvCombo) && (s.rvFirst === '全部' || r.first === s.rvFirst) && r.wrongs >= s.rvMin);
+
+    const logs = s.logs.map(l => ({ when: when(l.created_at), a: l.tasks_added ?? 0, q: l.attempts_added ?? 0, pf: l.problems_fetched ?? 0,
+      miss: (l.problems_failed || 0) + (l.tasks_failed ? ` · ${l.tasks_failed} 份作業` : ''), status: l.status === 'done' ? '完成' : l.status === 'partial' ? '部分未取得' : (l.status || '—'),
+      tagClass: l.status === 'done' ? 'tag-accent-2' : 'tag-accent' }));
+    const syncSteps = ['在 Chrome 或 Edge 安裝「本手同步」擴充功能，點圖示用這個帳號登入。', '開啟 101「我的作業」並登入 101。', '按頁面右下角的「同步到本手」，等進度跑完。', '101 只列出最近 100 份作業，建議每天或每兩三天同步一次。'];
+
+    const draft = s.setDraft;
+    const setFields = [['acc', '升級門檻答對率', '%'], ['n', '升級門檻題數', '題'], ['fast', '快答上限', '秒'], ['slow', '慢答下限', '秒'], ['trend', '趨勢判定閾值 ±', '%']]
+      .map(([k, label, unit]) => ({ label, unit, value: draft[k], onChange: e => { const v = Number(e.target.value); this.setState(st => ({ setDraft: Object.assign({}, st.setDraft, { [k]: v }) })); } }));
+    const savePatch = patch => this.api.saveProfile(patch).then(() => this.setState(st => ({ profile: Object.assign({}, st.profile, patch) })));
+    const cfg = this.cfgOf(), cntBy = {}; allN.forEach(x => { cntBy[x.type] = (cntBy[x.type] || 0) + 1; });
+    const saveCfg = (next, msg, extra) => this.run(async () => { await savePatch({ type_map: next }); this.setState(Object.assign({ catSel: {}, renames: {} }, extra || {})); }, msg);
+    const cloneCfg = () => JSON.parse(JSON.stringify(cfg));
+    const taken = (name, skip) => cfg.cats.some(c => c.name === name && !(skip || []).includes(c.id));
+    const sel = s.catSel || {}, selIds = cfg.cats.filter(c => sel[c.id]).map(c => c.id);
+    const catRows = cfg.cats.map(c => ({
+      name: s.renames[c.id] ?? c.name, count: (cntBy[c.name] || 0) + ' 題',
+      src: [c.lvs.length ? '等級：' + c.lvs.join('、') : '', c.raws.length ? '101 題型：' + c.raws.join('、') : '', c.books.length ? '作業本：' + c.books.join('、') : ''].filter(Boolean).join(' · ') || '沒有對應來源',
+      checked: !!sel[c.id], onSel: e => { const v = e.target.checked; this.setState(st => ({ catSel: Object.assign({}, st.catSel, { [c.id]: v }) })); },
+      onName: e => { const v = e.target.value; this.setState(st => ({ renames: Object.assign({}, st.renames, { [c.id]: v }) })); },
+      onNameBlur: () => { const v = (this.state.renames[c.id] ?? c.name).trim();
+        if (v === c.name) return;
+        if (!v || taken(v, [c.id])) { this.toast(v ? '已有同名題型' : '名稱不能空白'); return this.setState(st => { const r = Object.assign({}, st.renames); delete r[c.id]; return { renames: r }; }); }
+        const n = cloneCfg(); n.cats.find(x => x.id === c.id).name = v; saveCfg(n, '已改名'); },
+      showOpts: [[true, '計入統計'], [false, '只計錯題']].map(([v, l]) => seg(c.show, v, l, () => { if (c.show === v) return; const n = cloneCfg(); n.cats.find(x => x.id === c.id).show = v; saveCfg(n, v ? '已計入統計' : '已改為只計錯題'); })),
+      onDel: () => this.setState({ delCat: c.id, delOk: false }),
+      canSplit: !!(c.parts && c.parts.length),
+      thTag: c.th && Object.keys(c.th).length ? '自訂門檻' : '使用預設門檻', thOpen: s.thOpen === c.id, thBtn: s.thOpen === c.id ? '收合' : '調整門檻',
+      onTh: () => this.setState(st => st.thOpen === c.id ? { thOpen: null } : { thOpen: c.id, thDraft: Object.assign({}, c.th || {}) }),
+      thFields: TH_FIELDS.map(([k, label, unit]) => ({ label, unit, ph: '預設 ' + S[k], value: s.thOpen === c.id ? (s.thDraft[k] ?? '') : '',
+        onChange: e => { const v = e.target.value; this.setState(st => ({ thDraft: Object.assign({}, st.thDraft, { [k]: v }) })); } })),
+      thSave: () => { const th = {}; for (const [k] of TH_FIELDS) { const v = s.thDraft[k]; if (v !== '' && v != null) { const num = Number(v); if (!isFinite(num) || num < 0) return this.toast('請輸入正數'); th[k] = num; } }
+        const n = cloneCfg(), x = n.cats.find(q => q.id === c.id); if (Object.keys(th).length) x.th = th; else delete x.th; saveCfg(n, '已儲存「' + c.name + '」的門檻', { thOpen: null }); },
+      thReset: () => { const n = cloneCfg(); delete n.cats.find(q => q.id === c.id).th; saveCfg(n, '「' + c.name + '」已改用預設門檻', { thOpen: null }); },
+      onSplit: () => { const n = cloneCfg(), at = n.cats.findIndex(x => x.id === c.id); if (at < 0) return;
+        const others = n.cats.filter(x => x.id !== c.id).map(x => x.name);
+        const back = c.parts.map(pt => Object.assign({}, pt, { name: others.includes(pt.name) ? pt.name + '（拆分）' : pt.name }));
+        n.cats.splice(at, 1, ...back); saveCfg(n, '已拆分「' + c.name + '」'); }
+    }));
+    const delC = cfg.cats.find(c => c.id === s.delCat);
+    const splitBooks = t => [...new Set(String(t || '').split(/[,，、\n]/).map(x => x.trim()).filter(Boolean))];
+    const ed = s.editing;
+
+    return Object.assign(base, {
+      myCode: (s.myCode || '').replace(/(.{4})(?=.)/g, '$1-'),
+      copyCode: () => { try { navigator.clipboard.writeText(s.myCode); this.toast('已複製登入代碼'); } catch (e) { this.toast(s.myCode); } },
+      navItems, meName: me.display_name || '（未命名）', meLevel: me.level || '等級未填',
+      logout: () => this.logout(), shellCols: mobile ? 'minmax(0,1fr)' : '240px minmax(0,1fr)', mainPad: mobile ? '20px 16px 96px' : '32px 40px 48px',
+      pageLabel: LABEL[s.page], loadingRows: s.loading,
+      headTitle: s.page === 'overview' ? (me.display_name || '總覽') : LABEL[s.page],
+      headSub: (me.level || '等級未填') + ' · ' + (showPeriod ? md(d0) + ' – ' + md(d1) + ' · ' : '') + '上次同步 ' + when(lastSyncAt),
+      showPeriod, showCustom: showPeriod && s.period === 'custom',
+      periods: [['1w', '近一週'], ['4w', '近四週'], ['3m', '三個月'], ['custom', '自訂']].map(([v, l]) => seg(s.period, v, l, () => this.setState({ period: v }))),
+      cFrom: s.cFrom, cTo: s.cTo, onFrom: e => this.setState({ cFrom: e.target.value }), onTo: e => this.setState({ cTo: e.target.value }),
+      showStaleTag: stale == null || stale > staleLimit, staleTagText: stale == null ? '尚未同步' : stale + ' 天未同步',
+      showNoData: !hasData && !s.loading && showPeriod, neverSynced: !s.rows.length, goSync: go('sync'),
+      noDataHint: s.rows.length ? '換一個日期範圍看看。' : '還沒有同步過 101 的作業。',
+      pgOverview: hasData && s.page === 'overview', pgDetail: hasData && s.page === 'detail', pgReview: hasData && s.page === 'review',
+      pgSync: s.page === 'sync', pgSettings: s.page === 'settings',
+      kpis, upText, upTag: ups.length ? '可升級' : '升級提示', upBg: ups.length ? 'var(--color-accent-2-200)' : 'var(--color-surface)', upInk: ups.length ? 'var(--color-accent-2-900)' : 'var(--color-text)', upTagBg: ups.length ? 'var(--color-accent-2-600)' : 'var(--color-neutral-600)',
+      ovCombos, comboNote: hidden ? `另有 ${hidden} 組少於 ${minCount} 題，見組合詳情` : '點卡片看詳情',
+      volTitle: span <= 14 ? '每日做題數' : '每週做題數', legend: types.map(t => ({ name: t, color: colorOf(t) })), vol,
+      reviewTop: reviewAll.slice(0, 5), reviewCount: reviewAll.length, noReview: !reviewAll.length, goReview: go('review'),
+      thrAccText: S.acc + '%', thrTop: ((100 - S.acc) / 60 * 100) + '%', yTicks: [100, 80, 60, 40].map(v => ({ label: v + '%', top: ((100 - v) / 60 * 100) + '%' })),
+      rvCombo: s.rvCombo, rvComboOpts: ['全部'].concat([...new Set(reviewAll.map(r => r.combo))].sort()), onRvCombo: e => this.setState({ rvCombo: e.target.value }),
+      rvFirstOpts: ['全部', '黑先', '白先'].map(v => seg(s.rvFirst, v, v, () => this.setState({ rvFirst: v }))),
+      rvMinOpts: [[2, '≥ 2 次'], [3, '≥ 3 次']].map(([v, l]) => seg(s.rvMin, v, l, () => this.setState({ rvMin: v }))),
+      rvList: rvFiltered, rvEmpty: !rvFiltered.length, rvCountText: rvFiltered.length + ' 題',
+      wqName: me.wq_username || '尚未綁定', lastSyncText: when(lastSyncAt), syncTagText: stale == null ? '尚未同步' : stale > staleLimit ? stale + ' 天未同步' : '已同步', syncTagClass: stale != null && stale <= staleLimit ? 'tag-accent-2' : 'tag-accent',
+      syncSteps: syncSteps.map((text, i) => ({ no: i + 1, text })), logs, noLogs: !logs.length,
+      bigGap: stale != null && stale > 20, gapText: `已經 ${stale} 天沒有同步。101 的作業清單只顯示最近 100 份（約三週到一個月），更早的作業可能已經捲出清單，同步後也補不回來。`,
+      profName: s.prof.display_name, profLevel: s.prof.level,
+      onProfName: e => this.setState({ prof: Object.assign({}, this.state.prof, { display_name: e.target.value }) }),
+      onProfLevel: e => this.setState({ prof: Object.assign({}, this.state.prof, { level: e.target.value }) }),
+      saveProf: () => this.run(() => savePatch({ display_name: s.prof.display_name.trim(), level: s.prof.level.trim() }), '已儲存'),
+      setFields, saveThresholds: () => this.run(() => savePatch({ settings: Object.assign({}, draft) }), '已儲存門檻'),
+      catRows, canMerge: selIds.length >= 2, selCount: selIds.length, mergeName: s.mergeName,
+      onMergeName: e => this.setState({ mergeName: e.target.value }), clearSel: () => this.setState({ catSel: {} }),
+      doMerge: () => { const name = s.mergeName.trim(); if (!name) return this.toast('請輸入新組合名稱'); if (taken(name, selIds)) return this.toast('已有同名題型');
+        const n = cloneCfg(), picked = n.cats.filter(c => selIds.includes(c.id)), at = n.cats.findIndex(c => selIds.includes(c.id));
+        const m = { id: 'm' + Date.now(), name, raws: [...new Set(picked.flatMap(c => c.raws))], books: [...new Set(picked.flatMap(c => c.books))], lvs: picked.some(c => !c.lvs.length) ? [] : sortLv([...new Set(picked.flatMap(c => c.lvs))]), show: picked.some(c => c.show), parts: picked };
+        n.cats = n.cats.filter(c => !selIds.includes(c.id)); n.cats.splice(at, 0, m); saveCfg(n, '已合併為「' + name + '」', { mergeName: '' }); },
+      ncName: s.nc.name, ncBooks: s.nc.books,
+      onNcName: e => { const v = e.target.value; this.setState(st => ({ nc: Object.assign({}, st.nc, { name: v }) })); },
+      onNcBooks: e => { const v = e.target.value; this.setState(st => ({ nc: Object.assign({}, st.nc, { books: v }) })); },
+      addCat: () => { const name = s.nc.name.trim(), books = splitBooks(s.nc.books);
+        if (!name) return this.toast('請輸入題型名稱'); if (!books.length) return this.toast('請輸入對應的作業本名稱'); if (taken(name)) return this.toast('已有同名題型');
+        const n = cloneCfg(); n.cats.push({ id: 'n' + Date.now(), name, raws: [], books, show: true }); saveCfg(n, '已新增「' + name + '」', { nc: { name: '', books: '' } }); },
+      hasDel: !!delC, delName: delC ? delC.name : '', delOk: s.delOk, delDisabled: !s.delOk || s.busy,
+      delBody: delC ? `這個題型的 ${cntBy[delC.name] || 0} 題將不再計入統計，也不會出現在錯題中。${delC.raws.length ? '之後 101 標示為' + (delC.lvs.length ? '「' + delC.lvs.join('、') + '」的' : '') + '「' + delC.raws.join('、') + '」題目也不會再自動加回。' : ''}` : '',
+      onDelOk: e => this.setState({ delOk: e.target.checked }), closeDel: () => this.setState({ delCat: null, delOk: false }),
+      doDel: () => { if (!s.delOk || !delC) return; const n = cloneCfg(); n.cats = n.cats.filter(c => c.id !== delC.id); n.removed = [...new Set(n.removed.concat(delC.raws.flatMap(r => delC.lvs.length ? delC.lvs.map(l => l + '|' + r) : ['*|' + r])))];
+        saveCfg(n, '已刪除「' + delC.name + '」', { delCat: null, delOk: false }); },
+      fbOpts: [[true, '改用作業難度'], [false, '不計入']].map(([v, l]) => seg(me.use_fallback !== false, v, l, () => this.run(() => savePatch({ use_fallback: v }), '已儲存'))),
+      hasEditing: !!ed, edPid: ed ? (ed.qno || '#' + ed.pid) : '', edOrig: ed ? ed.orig : '', edLv: ed ? ed.lv : '', edRaw: ed ? ed.raw : '', edHasOv: !!(ed && ed.ov),
+      rawOpts: [...new Set(RAW_DEFAULT.concat(cfg.cats.flatMap(c => c.raws), cfg.cats.filter(c => c.books.length).map(c => c.name)))], closeEdit: () => this.setState({ editing: null }),
+      onEdLv: e => this.setState({ editing: Object.assign({}, this.state.editing, { lv: e.target.value }) }),
+      onEdRaw: e => this.setState({ editing: Object.assign({}, this.state.editing, { raw: e.target.value }) }),
+      saveEdit: () => { const lv = cleanLv(ed.lv); if (!/^\d+[KD]$/.test(lv)) return this.toast('等級格式例如 10K 或 1D');
+        this.run(async () => { await this.api.setOverride(ed.pid, lv, ed.raw); this.patchRows(ed.pid, lv, ed.raw); this.setState({ editing: null }); }, '已修改分類'); },
+      edReset: () => this.run(async () => { await this.api.clearOverride(ed.pid); this.patchRows(ed.pid, null, null); this.setState({ editing: null }); }, '已改回 101 的分類')
+    }, detail);
+  }
+}
+</script>
+</body>
+</html>
