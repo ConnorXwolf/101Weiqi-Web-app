@@ -22,7 +22,7 @@
 做題數、答對率、錯題與答對題的用時比、答錯兩次以上的題數，全部在第一頁。
 達到升級門檻（答對率 ≥ 90%、題數 ≥ 100）的組合會直接告訴你「可升級」，差一點的也會告訴你還差多少。
 
-![總覽](docs/image/overview.png)
+![總覽](doc/image/overview.png)
 
 ### 🧩 各等級 × 題型
 
@@ -33,26 +33,26 @@
 - 答對題 vs 錯題的平均思考時間
 - 快錯比例（≤ 8 秒就答錯的題）
 
-![各等級 × 題型](docs/image/combos.png)
+![各等級 × 題型](doc/image/combos.png)
 
 ### 📈 組合詳情：每週答對率趨勢
 
 點進任一組合，看每週的答對率與題數，升級門檻線畫在圖上。
 
-![答對率趨勢](docs/image/trend.png)
+![答對率趨勢](doc/image/trend.png)
 
 錯題依用時分成 **快錯 / 中間 / 慢錯**，分辨是「看錯、太急」還是「真的不會」。
 
-![思考時間與錯題速度](docs/image/thinking-time.png)
+![思考時間與錯題速度](doc/image/thinking-time.png)
 
-![最近答錯的題目](docs/image/recent-mistakes.png)
+![最近答錯的題目](doc/image/recent-mistakes.png)
 
 ### 🔁 錯題複習
 
 列出答錯兩次以上（或三次以上）的題目，可依組合、黑先／白先篩選。
 按「到 101 重做」直接開啟原題。
 
-![錯題複習](docs/image/mistakes.png)
+![錯題複習](doc/image/mistakes.png)
 
 ### 🏷️ 題型分類：照你的習慣分組
 
@@ -61,9 +61,9 @@
 - 每個組合可個別 **調整升級門檻**
 - 不想影響答對率的題型（例如錯題重做）可設為「只計錯題」
 
-![題型分類](docs/image/categories.png)
+![題型分類](doc/image/categories.png)
 
-![合併題型](docs/image/merge.png)
+![合併題型](doc/image/merge.png)
 
 ---
 
@@ -87,16 +87,16 @@
 
 1. 點工具列的本手圖示，按 **開啟 101「我的作業」**。
 
-   ![本手同步](docs/image/extension-popup.png)
+   ![本手同步](doc/image/extension-popup.png)
 
 2. 登入你的 101 帳號，進入「我的作業列表」。
 3. 按右下角的 **同步到本手**。
 
-   ![同步到本手按鈕](docs/images/sync-button-corner.png)
+   ![同步到本手按鈕](doc/images/sync-button-corner.png)
 
 4. 等待讀取完成。進度會顯示在右下角（例如「讀取各題等級、題型與先手 20/2783」）。第一次需要逐題讀取，會較久，大約需要5分鐘；之後只會讀新的題目。
 
-   ![同步中](docs/image/syncing.png)
+   ![同步中](doc/image/syncing.png)
 
 5. 完成後會連結目前的 101 帳號，並產生一組 **12 碼登入代碼**（`XXXX-XXXX-XXXX`），然後自動開啟本手。
 
@@ -109,7 +109,7 @@
 ### 在另一台裝置查看
 
 開啟本手，輸入 12 碼代碼，按 **登入**。
-![首頁](docs/image/home.png)
+![首頁](doc/image/home.png)
 
 ---
 
