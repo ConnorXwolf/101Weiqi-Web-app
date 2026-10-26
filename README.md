@@ -149,7 +149,7 @@
 
 歡迎在 [Issues](https://github.com/ConnorXwolf/101Weiqi-web-app/issues) 回報錯誤或提出建議。
 
-支持本手
+## 支持本手
 
 本手免費使用。如果它對你的練習有幫助，歡迎請作者喝杯珍奶，支持後續維護與新功能開發。
 
