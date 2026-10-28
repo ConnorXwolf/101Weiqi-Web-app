@@ -13,7 +13,7 @@
 
 本手把每一題的等級、題型、黑先／白先、用時、對錯全部讀出來，替你整理成下面這些畫面。
 
-[前往本手](https://connorxwolf.github.io/101Weiqi-Web-app/app.dc.html)
+[前往本手](https://connorxwolf.github.io/Honte-Benshou/app.dc.html)
 ---
 
 ## 功能一覽
@@ -110,7 +110,7 @@
 ### 在任何裝置查看
 
 開啟本手，輸入 12 碼代碼，按 **登入**。
-[前往本手](https://connorxwolf.github.io/101Weiqi-Web-app/app.dc.html)
+[前往本手](https://connorxwolf.github.io/Honte-Benshou/app.dc.html)
 ![首頁](doc/image/home.png)
 
 ---
