@@ -141,7 +141,7 @@
 
 用 街口支付 或任一支援 TWQR 的銀行 App 掃描下方 QR Code 即可。
 
-![街口QR碼］（"doc/image/IMG_1794.jpeg”）
+![街口QR碼](doc/image/IMG_1794.jpeg)
 
 ## 授權
 
