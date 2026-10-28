@@ -142,7 +142,7 @@
 用 街口支付 或任一支援 TWQR 的銀行 App 掃描下方 QR Code 即可。
 
 <p align="center">
-  <img src="doc/image/jkopay.png" width="260" alt="街口支付 QR Code">
+  <img src="doc/image/IMG_1794.jpeg”width="260" alt="街口支付 QR Code">
 </p>
 
 ## 授權
