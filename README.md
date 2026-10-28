@@ -137,11 +137,17 @@
 
 ## 支持本手
 
-本手免費使用。如果它對你的練習有幫助，歡迎請作者喝杯珍奶，支持後續維護與新功能開發。
+本手免費使用。如果它對你的練習有幫助，歡迎請作者喝豪大杯無糖綠，支持後續維護與新功能開發。
 
 用 街口支付 或任一支援 TWQR 的銀行 App 掃描下方 QR Code 即可。
 
 ![街口QR碼](doc/image/IMG_1794.jpeg)
+
+或點擊PayPal打賞創作者今晚的薯條可以加大
+<a href="https://www.paypal.com/donate/?business=5CKV7SDVDDHB4&no_recurring=0&item_name=Support+本手">
+  <img src="https://img.shields.io/badge/Support_本手-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white" alt="Support 本手 via PayPal">
+</a>
+
 
 ## 授權
 
