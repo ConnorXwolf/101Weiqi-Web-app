@@ -144,7 +144,7 @@
 
 <img src="jkopay_qr.svg" style="width:200px">
 
-或點擊PayPal打賞創作者今晚的薯條可以加大
+或點擊PayPal打賞創作者今晚的薯條加大
 <a href="https://www.paypal.com/donate/?business=5CKV7SDVDDHB4&no_recurring=0&item_name=Support+本手">
   <img src="https://img.shields.io/badge/Support_本手-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white" alt="Support 本手 via PayPal">
 </a>
