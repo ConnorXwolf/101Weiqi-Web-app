@@ -142,7 +142,7 @@
 
 用 街口支付 或任一支援 TWQR 的銀行 App 掃描下方 QR Code 即可。
 
-![街口QR碼](doc/image/IMG_1794.jpeg)
+<img src="jkopay_qr.svg" style="width:200px">
 
 或點擊PayPal打賞創作者今晚的薯條可以加大
 <a href="https://www.paypal.com/donate/?business=5CKV7SDVDDHB4&no_recurring=0&item_name=Support+本手">
