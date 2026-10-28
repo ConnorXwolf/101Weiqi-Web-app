@@ -139,7 +139,11 @@
 
 本手免費使用。如果它對你的練習有幫助，歡迎請作者喝杯珍奶，支持後續維護與新功能開發。
 
-<a href="https://www.paypal.com/ncp/payment/45JAJVFBLE68Y"> <img src="https://img.shields.io/badge/Support_本手-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white" alt="Support 本手 via PayPal"> </a>
+用 街口支付 或任一支援 TWQR 的銀行 App 掃描下方 QR Code 即可。
+
+<p align="center">
+  <img src="doc/image/jkopay.png" width="260" alt="街口支付 QR Code">
+</p>
 
 ## 授權
 
