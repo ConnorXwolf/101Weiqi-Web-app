@@ -32,7 +32,6 @@
       if (client && client.dispose) { try { await client.dispose(); } catch (e) {} }
       client = null; loadedKey = '';
       const c = new L.KataGoEngineClient();
-      if (onProgress && c.on) { try { c.on('progress', e => onProgress(e)); } catch (e) {} }
       let be = backend();
       try { await c.init({ modelUrl: url, backend: be }); }
       catch (e) { if (be !== 'wasm') { be = 'wasm'; await c.init({ modelUrl: url, backend: be }); } else throw e; }
