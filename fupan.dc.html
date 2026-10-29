@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="assets/styles.css?v=2">
-<script src="katago/engine.js?v=5"></script>
+<script src="katago/engine.js?v=9"></script>
 </helmet>
 
 <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
@@ -168,7 +168,14 @@
                   </svg>
                   <span style="position:absolute;left:8px;top:4px;font-size:11px;color:var(--color-neutral-700)">黑勝</span>
                   <span style="position:absolute;left:8px;bottom:4px;font-size:11px;color:var(--color-neutral-700)">白勝</span>
+                  <sc-for list="{{ wrMarks }}" as="k" hint-placeholder-count="0">
+                    <div title="{{ k.tip }}" onClick="{{ k.go }}" style="position:absolute;left:{{ k.left }};top:{{ k.top }};transform:translate(-50%,-50%);width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+                      <span style="width:11px;height:11px;border-radius:50%;background:oklch(0.58 0.2 27);box-shadow:0 0 0 2px var(--color-neutral-100)"></span>
+                      <span style="position:absolute;bottom:17px;font-size:10px;font-weight:700;line-height:1;color:oklch(0.48 0.18 27);white-space:nowrap">{{ k.no }}</span>
+                    </div>
+                  </sc-for>
                 </div>
+                <sc-if value="{{ hasWrMarks }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-neutral-800)"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.58 0.2 27);flex:none"></span>勝率轉折點（單手損失 ≥ 8%，最多 8 處），點紅點跳到該手</div></sc-if>
                 <div style="font-size:13px;color:var(--color-neutral-800);text-wrap:pretty">{{ aiNow }}</div>
                 <button class="btn btn-secondary" style="white-space:nowrap;align-self:flex-start" disabled="{{ aiBusy }}" onClick="{{ markTop }}">把損失最大的 3 手設為關鍵點</button>
               </sc-if>
@@ -374,7 +381,7 @@ class Component extends DCLogic {
   componentDidMount() {
     const set = (this.props.profile || {}).settings || {};
     const kg = set.katago || {};
-    this.setState({ fox: Object.assign({}, this.state.fox, { name: set.foxName || '' }), aiUrl: kg.url || '', aiToken: kg.token || '', aiVisits: kg.visits || 50, aiEngine: kg.engine || (kg.url ? 'server' : 'local'), aiModel: kg.model || 'b10', aiModelUrl: kg.modelUrl || '' });
+    this.setState({ fox: Object.assign({}, this.state.fox, { name: set.foxName || '' }), aiUrl: kg.url || '', aiToken: kg.token || '', aiVisits: kg.visits || 50, aiEngine: kg.engine || (kg.url ? 'server' : 'local'), aiModel: (((window.WQKata && window.WQKata.MODELS) || []).some(x => x.id === kg.model) ? kg.model : 'b10'), aiModelUrl: kg.modelUrl || '' });
     if ((this.props.mode || 'page') !== 'map') this.loadGames();
   }
   async loadGames() {
@@ -496,7 +503,7 @@ class Component extends DCLogic {
     if (!window.WQKata) throw new Error('katago/engine.js 沒有載入');
     const s = this.state, name = (window.WQKata.MODELS.find(m => m.id === s.aiModel) || {}).label || s.aiModel;
     this.setState({ aiMsg: '載入模型 ' + name + '（第一次需下載，請稍候）…', aiErr: false });
-    try { await window.WQKata.load(s.aiModel, s.aiModelUrl.trim()); }
+    try { await window.WQKata.load(s.aiModel, s.aiModelUrl.trim(), f => this.setState({ aiMsg: '下載模型 ' + Math.round(f * 100) + '%' }), t => this.setState({ aiMsg: t })); }
     catch (e) { throw new Error(/程式庫/.test(e.message) ? e.message : '模型載入失敗：' + e.message + '（確認 katago/models/ 檔名）'); }
   }
   async saveAiCfg() {
@@ -730,6 +737,12 @@ class Component extends DCLogic {
       wrLine: ai ? ai.wr.map((v, i) => v == null ? null : (i ? 'L' : 'M') + i + ' ' + (100 - v).toFixed(1)).filter(Boolean).join(' ').replace(/^L/, 'M') : '',
       wrArea: ai ? (() => { const pts = ai.wr.map((v, i) => v == null ? null : [i, 100 - v]).filter(Boolean); return pts.length ? 'M' + pts[0][0] + ' 100 ' + pts.map(p => 'L' + p[0] + ' ' + p[1].toFixed(1)).join(' ') + ' L' + pts[pts.length - 1][0] + ' 100 Z' : ''; })() : '',
       graphClick: e => { const r = e.currentTarget.getBoundingClientRect(); const n = Math.round((e.clientX - r.left) / r.width * maxMove); this.setState({ cur: Math.max(0, Math.min(maxMove, n)), vari: null, tryFor: null }); },
+      ...(() => { const mk = [];
+        if (ai) { for (let i = 1; i <= maxMove; i++) { const v = lossAt(i), w = ai.wr[i]; if (v != null && w != null && v >= 8) mk.push({ i, v, w }); }
+          mk.sort((a, b) => b.v - a.v); mk.length = Math.min(mk.length, 8); mk.sort((a, b) => a.i - b.i); }
+        const wrMarks = mk.map(m => ({ no: m.i, left: (m.i / Math.max(1, maxMove) * 100) + '%', top: Math.max(6, Math.min(94, 100 - m.w)) + '%',
+          tip: '第 ' + m.i + ' 手 · 損失 ' + m.v + '%', go: e => { e.stopPropagation(); this.setState({ cur: m.i, vari: null, tryFor: null }); } }));
+        return { wrMarks, hasWrMarks: wrMarks.length > 0 }; })(),
       aiNow: ai ? (() => { const at0 = vari ? vari.base : cur, w = ai.wr[at0], l = ai.lead[at0], ls = lossAt(at0), b = ai.best[at0];
         if (w == null) return '這一手還沒分析到。';
         return [(vari ? '變化起點（第 ' + at0 + ' 手）' : at0 === 0 ? '開局' : '第 ' + at0 + ' 手') + '：黑勝率 ' + Math.round(w) + '%', l != null ? (l >= 0 ? '黑' : '白') + '領先 ' + Math.abs(l).toFixed(1) + ' 目' : '', ls != null ? '這手損失 ' + ls + '%' : '', b ? 'AI 推薦下一手 ' + (b === 'pass' ? '虛手' : b) + '（綠圈）' : ''].filter(Boolean).join(' · '); })() : '',
