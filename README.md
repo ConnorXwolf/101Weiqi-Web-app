@@ -65,6 +65,7 @@ AI 勝率分析正在開發中。之後可以直接看每一手的勝率變化�
 
 ![KataGo 勝率分析](doc/image/review-katago.png)
 
+## ⚠️有下載本手1.0的朋友們，請在到 [Releases](https://github.com/ConnorXwolf/Honte-Benshou/releases/latest) 更新最新的 `benshou-extension.zip`，以免造成101的作業數據無法同步到本手
 ---
 
 ## 101 作業統計
@@ -125,7 +126,7 @@ AI 勝率分析正在開發中。之後可以直接看每一手的勝率變化�
 
 本手需要一個瀏覽器擴充功能，負責在 101 的「我的作業」頁面讀取你的做題紀錄。支援 Chrome、Edge 及其他 Chromium 瀏覽器。
 
-1. 到 [Releases](https://github.com/ConnorXwolf/101weiqi-web-app/releases/latest) 下載最新的 `benshou-extension.zip`，解壓縮到一個不會被刪掉的資料夾。
+1. 到 [Releases](https://github.com/ConnorXwolf/Honte-Benshou/releases/latest) 下載最新的 `benshou-extension.zip`，解壓縮到一個不會被刪掉的資料夾。
 2. 在網址列輸入 `chrome://extensions`（Edge 為 `edge://extensions`）。
 3. 打開右上角的 **開發人員模式**。
 4. 按 **載入未封裝項目**，選擇剛剛解壓縮的資料夾。
