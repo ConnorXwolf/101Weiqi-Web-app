@@ -3,9 +3,8 @@
 (function () {
   const BASE = new URL('.', document.currentScript ? document.currentScript.src : location.href).href;
   const MODELS = [
-    { id: 'b6', label: '輕量 b6（約 4 MB，手機可用）', file: 'kata1-b6c96.bin.gz' },
     { id: 'b10', label: '標準 b10（約 11 MB）', file: 'kata1-b10c128.bin.gz' },
-    { id: 'b18', label: '精準 b18（約 96 MB，建議電腦）', file: 'kata1-b18c384nbt.bin.gz' },
+    { id: 'b6', label: '輕量 b6（手機可用）', file: 'kata1-b6c96-s175395328-d26788732.txt.gz' },
     { id: 'custom', label: '自訂模型網址', file: '' }
   ];
   const LIBS = [BASE + 'lib/katago-web.js', 'https://esm.sh/gh/JuneKim0712/katago-web/src/index.ts'];
@@ -29,14 +28,15 @@
     if (client && loadedKey === key) return client;
     if (loading && loading.key === key) return loading.p;
     const p = (async () => {
+      try { const r = await fetch(url, { method: 'HEAD' }); if (!r.ok) throw new Error('找不到模型檔（HTTP ' + r.status + '）：' + url); }
+      catch (e) { if (/找不到/.test(e.message)) throw e; }
       const L = await getLib();
       if (client && client.dispose) { try { await client.dispose(); } catch (e) {} }
       client = null; loadedKey = '';
       const c = new L.KataGoEngineClient();
-      if (onProgress && c.on) { try { c.on('progress', e => onProgress(e)); } catch (e) {} }
       let be = backend();
-      try { await c.init({ modelUrl: url, backend: be, onProgress }); }
-      catch (e) { if (be !== 'wasm') { be = 'wasm'; await c.init({ modelUrl: url, backend: be, onProgress }); } else throw e; }
+      try { await c.init(url, { backend: be }); }
+      catch (e) { if (be !== 'wasm') { be = 'wasm'; await c.init(url, { backend: be }); } else throw e; }
       client = c; loadedKey = key; client.__backend = be; return c;
     })();
     loading = { key, p };

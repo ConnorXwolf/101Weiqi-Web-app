@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="assets/styles.css?v=2">
-<script src="katago/engine.js?v=1"></script>
+<script src="katago/engine.js?v=5"></script>
 </helmet>
 
 <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
@@ -496,7 +496,7 @@ class Component extends DCLogic {
     if (!window.WQKata) throw new Error('katago/engine.js 沒有載入');
     const s = this.state, name = (window.WQKata.MODELS.find(m => m.id === s.aiModel) || {}).label || s.aiModel;
     this.setState({ aiMsg: '載入模型 ' + name + '（第一次需下載，請稍候）…', aiErr: false });
-    try { await window.WQKata.load(s.aiModel, s.aiModelUrl.trim(), e => { const f = e && (e.fraction ?? e.progress); if (f != null) this.setState({ aiMsg: '下載模型 ' + Math.round(f * 100) + '%' }); }); }
+    try { await window.WQKata.load(s.aiModel, s.aiModelUrl.trim()); }
     catch (e) { throw new Error(/程式庫/.test(e.message) ? e.message : '模型載入失敗：' + e.message + '（確認 katago/models/ 檔名）'); }
   }
   async saveAiCfg() {
