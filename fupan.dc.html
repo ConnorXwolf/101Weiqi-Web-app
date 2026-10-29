@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="assets/styles.css?v=2">
+<script src="katago/engine.js?v=1"></script>
 </helmet>
 
 <sc-if value="{{ isStats }}" hint-placeholder-val="{{ false }}">
@@ -137,16 +138,23 @@
             <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:var(--radius-lg);background:var(--color-bg)">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span style="font-size:14px;font-weight:600">AI 勝率（KataGo）</span>
-                <span class="tag tag-accent-2" style="white-space:nowrap;margin-right:auto">正在開發，敬請期待</span>
+                <span class="tag tag-accent-2" style="white-space:nowrap;margin-right:auto">{{ aiEngineTag }}</span>
                 <select class="input" style="width:auto;padding:6px 14px" value="{{ aiVisits }}" onChange="{{ onAiVisits }}"><sc-for list="{{ visitOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select>
-                <button class="btn btn-primary" style="white-space:nowrap;padding:6px 14px" disabled="{{ aiBusy }}" onClick="{{ runAi }}">{{ aiBtn }}</button>
+                <button class="btn btn-primary" style="white-space:nowrap;padding:6px 14px" onClick="{{ runAi }}">{{ aiBtn }}</button>
                 <button class="btn btn-ghost" style="white-space:nowrap;padding:6px 10px" onClick="{{ toggleAiCfg }}">設定</button>
               </div>
               <sc-if value="{{ aiCfgOpen }}" hint-placeholder-val="{{ false }}">
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end">
+                  <div class="field"><label>引擎</label><select class="input" value="{{ aiEngine }}" onChange="{{ onAiEngine }}"><option value="local">本機瀏覽器</option><option value="server">自架伺服器</option></select></div>
+                  <sc-if value="{{ aiIsLocal }}" hint-placeholder-val="{{ true }}">
+                    <div class="field"><label>模型</label><select class="input" value="{{ aiModel }}" onChange="{{ onAiModel }}"><sc-for list="{{ modelOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select></div>
+                    <sc-if value="{{ aiIsCustom }}" hint-placeholder-val="{{ false }}"><div class="field"><label>模型網址</label><input class="input" value="{{ aiModelUrl }}" onChange="{{ onAiModelUrl }}" placeholder="https://…/model.bin.gz"></div></sc-if>
+                  </sc-if>
+                  <sc-if value="{{ aiIsServer }}" hint-placeholder-val="{{ false }}">
                   <div class="field"><label>伺服器網址</label><input class="input" value="{{ aiUrl }}" onChange="{{ onAiUrl }}" placeholder="https://1-2-3-4.sslip.io"></div>
                   <div class="field"><label>密碼</label><input class="input" type="password" value="{{ aiToken }}" onChange="{{ onAiToken }}"></div>
-                  <button class="btn btn-secondary" style="white-space:nowrap" onClick="{{ saveAiCfg }}">儲存並測試</button>
+                  </sc-if>
+                  <button class="btn btn-secondary" style="white-space:nowrap" onClick="{{ saveAiCfg }}">{{ aiSaveText }}</button>
                 </div>
               </sc-if>
               <sc-if value="{{ hasAiMsg }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:{{ aiMsgColor }};text-wrap:pretty">{{ aiMsg }}</div></sc-if>
@@ -361,12 +369,12 @@ async function foxDirect(body) {
   return last;
 }
 class Component extends DCLogic {
-  state = { games: [], loading: true, view: 'list', draft: null, cur: 0, tryFor: null, vari: null, aiBusy: false, aiMsg: '', aiErr: false, aiCfgOpen: false, aiUrl: '', aiToken: '', aiVisits: 50, saving: false, delOpen: false, fox: { open: false, name: '', busy: false, err: '', list: null }, manualNo: '' };
+  state = { games: [], loading: true, view: 'list', draft: null, cur: 0, tryFor: null, vari: null, aiBusy: false, aiMsg: '', aiErr: false, aiCfgOpen: false, aiUrl: '', aiToken: '', aiVisits: 50, aiEngine: 'local', aiModel: 'b10', aiModelUrl: '', saving: false, delOpen: false, fox: { open: false, name: '', busy: false, err: '', list: null }, manualNo: '' };
   componentWillUnmount() { this._aiRun = (this._aiRun || 0) + 1; }
   componentDidMount() {
     const set = (this.props.profile || {}).settings || {};
     const kg = set.katago || {};
-    this.setState({ fox: Object.assign({}, this.state.fox, { name: set.foxName || '' }), aiUrl: kg.url || '', aiToken: kg.token || '', aiVisits: kg.visits || 50 });
+    this.setState({ fox: Object.assign({}, this.state.fox, { name: set.foxName || '' }), aiUrl: kg.url || '', aiToken: kg.token || '', aiVisits: kg.visits || 50, aiEngine: kg.engine || (kg.url ? 'server' : 'local'), aiModel: kg.model || 'b10', aiModelUrl: kg.modelUrl || '' });
     if ((this.props.mode || 'page') !== 'map') this.loadGames();
   }
   async loadGames() {
@@ -483,19 +491,35 @@ class Component extends DCLogic {
     const t = await r.text(); let d; try { d = JSON.parse(t); } catch { throw new Error(r.status === 503 || /<html/i.test(t) ? '伺服器正在喚醒或建置中，約 1–2 分鐘後再按一次' : '伺服器回應格式錯誤（HTTP ' + r.status + '）'); }
     if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status)); return d;
   }
+  aiCfg() { const s = this.state; return { engine: s.aiEngine, model: s.aiModel, modelUrl: s.aiModelUrl, url: this.aiBase(), token: s.aiToken, visits: s.aiVisits }; }
+  async loadLocal() {
+    if (!window.WQKata) throw new Error('katago/engine.js 沒有載入');
+    const s = this.state, name = (window.WQKata.MODELS.find(m => m.id === s.aiModel) || {}).label || s.aiModel;
+    this.setState({ aiMsg: '載入模型 ' + name + '（第一次需下載，請稍候）…', aiErr: false });
+    try { await window.WQKata.load(s.aiModel, s.aiModelUrl.trim(), e => { const f = e && (e.fraction ?? e.progress); if (f != null) this.setState({ aiMsg: '下載模型 ' + Math.round(f * 100) + '%' }); }); }
+    catch (e) { throw new Error(/程式庫/.test(e.message) ? e.message : '模型載入失敗：' + e.message + '（確認 katago/models/ 檔名）'); }
+  }
   async saveAiCfg() {
-    const kg = { url: this.aiBase(), token: this.state.aiToken, visits: this.state.aiVisits };
-    this.saveSettings({ katago: kg }); this.setState({ aiUrl: kg.url, aiMsg: '測試連線中…', aiErr: false });
+    const kg = this.aiCfg();
+    this.saveSettings({ katago: kg }); this.setState({ aiUrl: kg.url });
+    if (kg.engine === 'local') {
+      this.setState({ aiBusy: true });
+      try { await this.loadLocal(); this.setState({ aiBusy: false, aiCfgOpen: false, aiMsg: '模型已載入（' + (window.WQKata.backend() === 'webgpu' ? 'WebGPU 加速' : 'WASM') + '），可以開始分析。' }); }
+      catch (e) { this.setState({ aiBusy: false, aiErr: true, aiMsg: e.message }); }
+      return;
+    }
+    this.setState({ aiMsg: '測試連線中…', aiErr: false });
     try { await this.aiFetch('/ping', {}); this.setState({ aiMsg: '連線成功，可以開始分析。', aiCfgOpen: false }); }
     catch (e) { this.setState({ aiErr: true, aiMsg: '連不上 KataGo 伺服器：' + e.message + '。請確認網址、密碼，以及伺服器已啟動。' }); }
   }
   async runAi() {
     const B = this.line(); if (!B || !B.line) return;
-    if (!this.aiBase() && window.WQIsDemo && window.WQIsDemo()) {
+    if (window.WQIsDemo && window.WQIsDemo() && (this.state.aiEngine === 'local' || !this.aiBase())) {
       const n = B.line.moves.length; let w = 50; const wr = [], lead = [], best = [];
       for (let i = 0; i <= n; i++) { w = Math.max(2, Math.min(98, w + (Math.sin(i * 1.7) * 4) + (i % 37 === 0 && i ? -22 : 0))); wr.push(Math.round(w * 10) / 10); lead.push(Math.round((w - 50) / 3 * 10) / 10); best.push(LET[(i * 7) % 19] + (1 + (i * 5) % 19)); }
       this.patchInfo('ai', { visits: 50, wr, lead, best }); return this.setState({ aiMsg: '示範模式：以假資料顯示勝率圖。', aiErr: false });
     }
+    if (this.state.aiEngine === 'local') return this.runLocal(B);
     if (!this.aiBase()) return this.setState({ aiCfgOpen: true, aiErr: true, aiMsg: '請先填入 KataGo 伺服器網址與密碼。' });
     const L = B.line, N = L.size, I = this.state.draft.info || {}, cn = (I.rules || '中國') === '中國';
     const k = parseFloat(I.komi); const komi = isFinite(k) ? (cn ? k * 2 : k) : (cn ? 7.5 : 6.5);
@@ -521,6 +545,34 @@ class Component extends DCLogic {
       if (this.state.draft && this.state.draft.sgf === draftRef.sgf) this.save();
     } catch (e) { if (run === this._aiRun) this.setState({ aiBusy: false, aiErr: true, aiMsg: 'AI 分析失敗：' + e.message }); }
   }
+  async runLocal(B) {
+    const L = B.line, N = L.size, I = this.state.draft.info || {}, cn = (I.rules || '中國') === '中國';
+    const k = parseFloat(I.komi); const komi = isFinite(k) ? (cn ? k * 2 : k) : (cn ? 7.5 : 6.5);
+    const visits = Number(this.state.aiVisits) || 50, run = this._aiRun = (this._aiRun || 0) + 1, draftRef = this.state.draft;
+    const total = B.pos.length, wr = new Array(total).fill(null), lead = wr.slice(), best = wr.slice();
+    this.setState({ aiBusy: true, aiErr: false });
+    try {
+      await this.loadLocal();
+      const t0 = Date.now();
+      for (let i = 0; i < total; i++) {
+        if (run !== this._aiRun) return;
+        const P = B.pos[i], board = [];
+        for (let y = 0; y < N; y++) { const row = []; for (let x = 0; x < N; x++) { const v = P[y * N + x]; row.push(v ? (v.c === 'B' ? 'black' : 'white') : null); } board.push(row); }
+        const nx = L.moves[i], prev = L.moves[i - 1];
+        const player = nx ? (nx.c === 'B' ? 'black' : 'white') : prev ? (prev.c === 'B' ? 'white' : 'black') : (L.setup.length ? 'white' : 'black');
+        const r = await window.WQKata.analyze({ board, player, rules: cn ? 'chinese' : 'japanese', komi, visits });
+        wr[i] = r.wr; lead[i] = r.lead; best[i] = r.best;
+        if (i % 5 === 4 || i === total - 1) {
+          if (this.state.draft && this.state.draft.sgf === draftRef.sgf) this.patchInfo('ai', { visits, wr: wr.slice(), lead: lead.slice(), best: best.slice() });
+          const sec = (Date.now() - t0) / 1000, eta = Math.round(sec / (i + 1) * (total - i - 1));
+          this.setState({ aiMsg: '本機分析中 ' + (i + 1) + ' / ' + total + ' 手，約剩 ' + (eta > 90 ? Math.round(eta / 60) + ' 分鐘' : eta + ' 秒') });
+        }
+      }
+      this.setState({ aiBusy: false, aiMsg: '分析完成（本機 ' + (window.WQKata.backend() === 'webgpu' ? 'WebGPU' : 'WASM') + '，每手 ' + visits + ' visits）。' });
+      if (this.state.draft && this.state.draft.sgf === draftRef.sgf) this.save();
+    } catch (e) { if (run === this._aiRun) this.setState({ aiBusy: false, aiErr: true, aiMsg: 'AI 分析失敗：' + e.message }); }
+  }
+  stopAi() { this._aiRun = (this._aiRun || 0) + 1; this.setState({ aiBusy: false, aiMsg: '已停止分析，已完成的部分會保留。' }); }
   async save() {
     const d = this.state.draft; this.setState({ saving: true });
     try {
@@ -665,9 +717,14 @@ class Component extends DCLogic {
         del: () => { setVars(savedArr.filter(q => q.id !== v.id)); if (vari && vari.savedId === v.id) this.setState({ vari: Object.assign({}, vari, { savedId: null }) }); } })),
       numSize: (cell * 0.5).toFixed(2) + 'cqw',
       aiVisits: String(s.aiVisits), visitOpts: [[25, '快速 25'], [50, '一般 50'], [100, '細緻 100'], [200, '深入 200']].map(([v, l]) => ({ v: String(v), l })),
-      onAiVisits: e => this.setState({ aiVisits: Number(e.target.value) }), aiBusy: s.aiBusy, aiBtn: s.aiBusy ? '分析中…' : ai ? '重新分析' : '開始分析',
-      runAi: () => this.runAi(), toggleAiCfg: () => this.setState({ aiCfgOpen: !s.aiCfgOpen }), aiCfgOpen: s.aiCfgOpen,
+      onAiVisits: e => this.setState({ aiVisits: Number(e.target.value) }), aiBusy: s.aiBusy, aiRunDisabled: false, aiBtn: s.aiBusy ? '停止分析' : ai ? '重新分析' : '開始分析',
+      runAi: () => s.aiBusy ? this.stopAi() : this.runAi(), toggleAiCfg: () => this.setState({ aiCfgOpen: !s.aiCfgOpen }), aiCfgOpen: s.aiCfgOpen,
       aiUrl: s.aiUrl, aiToken: s.aiToken, onAiUrl: e => this.setState({ aiUrl: e.target.value }), onAiToken: e => this.setState({ aiToken: e.target.value }), saveAiCfg: () => this.saveAiCfg(),
+      aiEngine: s.aiEngine, aiIsLocal: s.aiEngine === 'local', aiIsServer: s.aiEngine !== 'local', aiModel: s.aiModel, aiIsCustom: s.aiModel === 'custom', aiModelUrl: s.aiModelUrl,
+      modelOpts: ((window.WQKata && window.WQKata.MODELS) || [{ id: 'b10', label: '標準 b10' }]).map(m => ({ v: m.id, l: m.label })),
+      onAiEngine: e => this.setState({ aiEngine: e.target.value }), onAiModel: e => this.setState({ aiModel: e.target.value }), onAiModelUrl: e => this.setState({ aiModelUrl: e.target.value }),
+      aiSaveText: s.aiEngine === 'local' ? '儲存並載入模型' : '儲存並測試',
+      aiEngineTag: s.aiEngine === 'local' ? '本機 · ' + (((window.WQKata && window.WQKata.MODELS) || []).find(m => m.id === s.aiModel) || { id: s.aiModel }).id : '自架伺服器',
       hasAiMsg: !!s.aiMsg, aiMsg: s.aiMsg, aiMsgColor: s.aiErr ? 'var(--color-accent-800)' : 'var(--color-neutral-800)',
       hasAi: !!ai, gW: Math.max(1, maxMove), curX: vari ? vari.base : cur,
       wrLine: ai ? ai.wr.map((v, i) => v == null ? null : (i ? 'L' : 'M') + i + ' ' + (100 - v).toFixed(1)).filter(Boolean).join(' ').replace(/^L/, 'M') : '',
