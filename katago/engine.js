@@ -37,7 +37,7 @@
   }
   function errMsg(e) { return (e && e.failure ? e.failure.code + '：' : '') + (e && e.message || String(e)); }
 
-  async function load(id, custom, onProgress) {
+  async function load(id, custom, onProgress, onStatus) {
     const url = modelUrl(id, custom), key = url;
     if (engine && loadedKey === key) return engine;
     if (loading && loading.key === key) return loading.p;
@@ -55,14 +55,33 @@
         variants: [{ variantId: 'main', format, entryPath: file,
           artifacts: [{ path: file, sha256: hash, byteLength: bytes.byteLength, source: { kind: 'bytes', bytes } }] }]
       };
+      const say = t => { if (onStatus) try { onStatus(t); } catch (e) {} };
       const tries = navigator.gpu ? ['webgpu', 'wasm-cpu'] : ['wasm-cpu'];
+      const STAGE = { fetch: '讀取模型', parse: '解析模型', compile: '編譯神經網路', warmup: '暖機' };
       let lastErr;
       for (const a of tries) {
-        const eng = L.createEngine({ assetBaseUrl: BASE + 'worker/' });
+        let failW = null;
+        const wErr = new Promise((_, rej) => { failW = rej; });
+        const eng = L.createEngine({ assetBaseUrl: BASE + 'worker/', workerFactory: () => {
+          const w = new Worker(BASE + 'worker/coordinator.worker.js', { type: 'module' });
+          w.addEventListener('error', ev => { ev.preventDefault && ev.preventDefault(); failW(new Error('引擎背景程式載入失敗（katago/worker/coordinator.worker.js）' + (ev.message ? '：' + ev.message : '，請確認此檔已上傳'))); });
+          w.addEventListener('messageerror', () => failW(new Error('引擎背景程式訊息錯誤')));
+          return w;
+        } });
+        const unsub = eng.subscribe(ev => {
+          if (ev.type === 'load-progress') say('初始化引擎（' + a + '）：' + (STAGE[ev.stage] || ev.stage) + (ev.fraction != null ? ' ' + Math.round(ev.fraction * 100) + '%' : '') + '…');
+          else if (ev.type === 'fault') failW(new Error(errMsg({ failure: ev.error, message: ev.error.message })));
+        });
+        say('初始化引擎（' + a + '）…');
+        let tm;
+        const timeout = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(a + ' 初始化逾時（90 秒沒有回應）')), 90000); });
         try {
-          await eng.initialize({ operationId: 'load-' + (++seq), model: { kind: 'manifest', manifest }, runtime: { accelerator: a, fallback: 'forbid' } });
-          engine = eng; accel = a; loadedKey = key; return eng;
-        } catch (e) { lastErr = e; try { await eng.dispose(); } catch (x) {} }
+          await Promise.race([eng.initialize({ operationId: 'load-' + (++seq), model: { kind: 'manifest', manifest }, runtime: { accelerator: a, fallback: 'forbid' } }), wErr, timeout]);
+          clearTimeout(tm); engine = eng; accel = a; loadedKey = key; say('引擎就緒（' + a + '）'); return eng;
+        } catch (e) {
+          clearTimeout(tm); lastErr = e; console.warn('[本手 KataGo] ' + a + ' 失敗：', e);
+          try { unsub(); } catch (x) {} try { await Promise.race([eng.dispose(), new Promise(r => setTimeout(r, 2000))]); } catch (x) {}
+        }
       }
       throw new Error(errMsg(lastErr));
     })();
@@ -92,8 +111,9 @@
         seed: null, batchSize: 'auto', searchThreads: 'auto', conservativePass: true, wideRootNoise: 0, rootSymmetrySamples: 1, allowedRootMoves: null },
       output: { maxCandidates: 3, pvLength: 1, includePolicy: false, ownership: 'none', includeOwnershipStdev: false, includeCandidateOwnership: false, progressIntervalMs: null }
     };
-    let r;
-    try { r = await engine.analyze(req); } catch (e) { throw new Error(errMsg(e)); }
+    let r, tm;
+    try { r = await Promise.race([engine.analyze(req), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error('單手分析逾時（120 秒）')), 120000); })]); }
+    catch (e) { throw new Error(errMsg(e)); } finally { clearTimeout(tm); }
     const s = r.snapshot, ev = s.evaluation;
     const c = (s.candidates || [])[0];
     let best = null;
