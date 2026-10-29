@@ -28,13 +28,15 @@
     if (client && loadedKey === key) return client;
     if (loading && loading.key === key) return loading.p;
     const p = (async () => {
+      try { const r = await fetch(url, { method: 'HEAD' }); if (!r.ok) throw new Error('找不到模型檔（HTTP ' + r.status + '）：' + url); }
+      catch (e) { if (/找不到/.test(e.message)) throw e; }
       const L = await getLib();
       if (client && client.dispose) { try { await client.dispose(); } catch (e) {} }
       client = null; loadedKey = '';
       const c = new L.KataGoEngineClient();
       let be = backend();
-      try { await c.init({ modelUrl: url, backend: be }); }
-      catch (e) { if (be !== 'wasm') { be = 'wasm'; await c.init({ modelUrl: url, backend: be }); } else throw e; }
+      try { await c.init(url, { backend: be }); }
+      catch (e) { if (be !== 'wasm') { be = 'wasm'; await c.init(url, { backend: be }); } else throw e; }
       client = c; loadedKey = key; client.__backend = be; return c;
     })();
     loading = { key, p };
