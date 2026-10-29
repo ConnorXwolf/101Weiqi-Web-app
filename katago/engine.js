@@ -61,7 +61,7 @@
         const wr = await fetch(wu, { cache: 'no-store' }).catch(() => null);
         if (!wr || !wr.ok) throw new Error('找不到 katago/worker/coordinator.worker.js（HTTP ' + (wr ? wr.status : '網路錯誤') + '）');
         const src = await wr.text();
-        const bare = [...new Set([...src.matchAll(/(?:^|[;\n}])\s*import\s*(?:[^'"]*?from\s*)?["']([^"'./][^"']*)["']/g)].map(m => m[1]))];
+        const bare = [...new Set([...src.matchAll(/(?:^|[;\n}])\s*import\s*(?:[^'"]*?from\s*)?['"]([^"'./][^"']*)['"]/g)].map(m => m[1]))];
         if (bare.length) throw new Error('背景程式引用了瀏覽器沒有的模組：' + bare.join('、') + '。請用新版 build.mjs 重新建置');
       }
       const tries = navigator.gpu ? ['webgpu', 'wasm-cpu'] : ['wasm-cpu'];
