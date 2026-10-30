@@ -4,13 +4,7 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
-var __commonJS = (cb, mod4) => function __require2() {
+var __commonJS = (cb, mod4) => function __require() {
   try {
     return mod4 || (0, cb[__getOwnPropNames(cb)[0]])((mod4 = { exports: {} }).exports, mod4), mod4.exports;
   } catch (e) {
@@ -907,9 +901,10 @@ var require_browser = __commonJS({
   }
 });
 
-// (disabled):util
+// stub:util
 var require_util = __commonJS({
-  "(disabled):util"() {
+  "stub:util"(exports, module) {
+    module.exports = {};
   }
 });
 
@@ -1436,6 +1431,13 @@ var require_tychei = __commonJS({
   }
 });
 
+// stub:crypto
+var require_crypto = __commonJS({
+  "stub:crypto"(exports, module) {
+    module.exports = {};
+  }
+});
+
 // node_modules/seedrandom/seedrandom.js
 var require_seedrandom = __commonJS({
   "node_modules/seedrandom/seedrandom.js"(exports, module) {
@@ -1562,7 +1564,7 @@ var require_seedrandom = __commonJS({
       if (typeof module == "object" && module.exports) {
         module.exports = seedrandom5;
         try {
-          nodecrypto = __require("crypto");
+          nodecrypto = require_crypto();
         } catch (ex) {
         }
       } else if (typeof define == "function" && define.amd) {
@@ -1604,9 +1606,10 @@ var require_seedrandom2 = __commonJS({
   }
 });
 
-// (disabled):node_modules/string_decoder/lib/string_decoder.js
+// stub:string_decoder
 var require_string_decoder = __commonJS({
-  "(disabled):node_modules/string_decoder/lib/string_decoder.js"() {
+  "stub:string_decoder"(exports, module) {
+    module.exports = {};
   }
 });
 

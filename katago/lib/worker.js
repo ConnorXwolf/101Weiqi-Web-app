@@ -4,13 +4,7 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
-var __commonJS = (cb, mod5) => function __require2() {
+var __commonJS = (cb, mod5) => function __require() {
   try {
     return mod5 || (0, cb[__getOwnPropNames(cb)[0]])((mod5 = { exports: {} }).exports, mod5), mod5.exports;
   } catch (e) {
@@ -907,9 +901,10 @@ var require_browser = __commonJS({
   }
 });
 
-// (disabled):util
+// stub:util
 var require_util = __commonJS({
-  "(disabled):util"() {
+  "stub:util"(exports, module) {
+    module.exports = {};
   }
 });
 
@@ -1436,6 +1431,13 @@ var require_tychei = __commonJS({
   }
 });
 
+// stub:crypto
+var require_crypto = __commonJS({
+  "stub:crypto"(exports, module) {
+    module.exports = {};
+  }
+});
+
 // node_modules/seedrandom/seedrandom.js
 var require_seedrandom = __commonJS({
   "node_modules/seedrandom/seedrandom.js"(exports, module) {
@@ -1562,7 +1564,7 @@ var require_seedrandom = __commonJS({
       if (typeof module == "object" && module.exports) {
         module.exports = seedrandom5;
         try {
-          nodecrypto = __require("crypto");
+          nodecrypto = require_crypto();
         } catch (ex) {
         }
       } else if (typeof define == "function" && define.amd) {
@@ -1604,21 +1606,45 @@ var require_seedrandom2 = __commonJS({
   }
 });
 
-// (disabled):node_modules/string_decoder/lib/string_decoder.js
+// stub:string_decoder
 var require_string_decoder = __commonJS({
-  "(disabled):node_modules/string_decoder/lib/string_decoder.js"() {
+  "stub:string_decoder"(exports, module) {
+    module.exports = {};
   }
 });
 
-// (disabled):perf_hooks
+// stub:fs
+var require_fs = __commonJS({
+  "stub:fs"(exports, module) {
+    module.exports = {};
+  }
+});
+
+// stub:path
+var require_path = __commonJS({
+  "stub:path"(exports, module) {
+    module.exports = {};
+  }
+});
+
+// stub:worker_threads
+var require_worker_threads = __commonJS({
+  "stub:worker_threads"(exports, module) {
+    module.exports = {};
+  }
+});
+
+// stub:perf_hooks
 var require_perf_hooks = __commonJS({
-  "(disabled):perf_hooks"() {
+  "stub:perf_hooks"(exports, module) {
+    module.exports = {};
   }
 });
 
-// (disabled):os
+// stub:os
 var require_os = __commonJS({
-  "(disabled):os"() {
+  "stub:os"(exports, module) {
+    module.exports = {};
   }
 });
 
@@ -1706,8 +1732,8 @@ var require_tfjs_backend_wasm_threaded_simd = __commonJS({
           err2("exiting due to exception: " + toLog);
         }
         if (ENVIRONMENT_IS_NODE) {
-          var fs = __require("fs");
-          var nodePath = __require("path");
+          var fs = require_fs();
+          var nodePath = require_path();
           if (ENVIRONMENT_IS_WORKER) {
             scriptDirectory = nodePath.dirname(scriptDirectory) + "/";
           } else {
@@ -1756,7 +1782,7 @@ var require_tfjs_backend_wasm_threaded_simd = __commonJS({
           };
           let nodeWorkerThreads;
           try {
-            nodeWorkerThreads = __require("worker_threads");
+            nodeWorkerThreads = require_worker_threads();
           } catch (e) {
             console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
             throw e;
@@ -3296,8 +3322,8 @@ var require_tfjs_backend_wasm = __commonJS({
           err2("exiting due to exception: " + toLog);
         }
         if (ENVIRONMENT_IS_NODE) {
-          var fs = __require("fs");
-          var nodePath = __require("path");
+          var fs = require_fs();
+          var nodePath = require_path();
           if (ENVIRONMENT_IS_WORKER) {
             scriptDirectory = nodePath.dirname(scriptDirectory) + "/";
           } else {
@@ -76365,7 +76391,7 @@ function inflateRaw(input2, options = {}) {
   });
 }
 
-// pako-shim:pako
+// pako-wrap:pako
 var pako_default = pako_exports;
 
 // katago-web-master/src/utils/browserWorker.ts
