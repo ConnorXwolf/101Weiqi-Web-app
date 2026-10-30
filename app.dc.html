@@ -232,6 +232,7 @@
             <div class="field" style="min-width:180px"><label>組合</label><select class="input" value="{{ rvCombo }}" onChange="{{ onRvCombo }}"><sc-for list="{{ rvComboOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for></select></div>
             <div class="field"><label>先手</label><div class="seg"><sc-for list="{{ rvFirstOpts }}" as="p" hint-placeholder-count="3"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }}">{{ p.label }}</button></sc-for></div></div>
             <div class="field"><label>答錯次數</label><div class="seg"><sc-for list="{{ rvMinOpts }}" as="p" hint-placeholder-count="2"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div></div>
+            <div class="field"><label>複習狀態</label><div class="seg"><sc-for list="{{ rvDoneOpts }}" as="p" hint-placeholder-count="3"><button class="seg-opt" onClick="{{ p.onClick }}" style="border:0;background:{{ p.bg }};color:{{ p.color }};white-space:nowrap">{{ p.label }}</button></sc-for></div></div>
             <div style="margin-left:auto;font-size:14px;color:var(--color-neutral-700)">{{ rvCountText }}</div>
           </div>
           <sc-if value="{{ rvEmpty }}" hint-placeholder-val="{{ false }}"><div class="card" style="padding:32px;font-size:15px">沒有符合條件的題目。</div></sc-if>
@@ -245,6 +246,10 @@
                   <a class="btn btn-primary" href="{{ r.url }}" target="_blank" style="white-space:nowrap"><span>到 101 重做</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg></a>
                   <button class="btn btn-ghost" style="white-space:nowrap" onClick="{{ r.edit }}">修改分類</button>
                 </div>
+                <label style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:{{ r.bg }};cursor:pointer;font-size:14px;font-weight:600;align-self:flex-start;user-select:none" style-hover="background:var(--color-accent-2-200)">
+                  <input type="checkbox" checked="{{ r.done }}" onChange="{{ r.toggle }}" style="width:18px;height:18px;margin:0;accent-color:var(--color-accent-2-700);cursor:pointer">
+                  <span style="color:var(--color-accent-2-900)">{{ r.doneText }}</span>
+                </label>
               </div>
             </sc-for>
           </div>
@@ -477,7 +482,7 @@ const LABEL = { overview: '總覽', detail: '組合詳情', review: '錯題複�
 class Component extends DCLogic {
   state = {
     boot: true, fatal: '', demo: false, profile: null, rows: [], rowsSince: null, loading: false, logs: [],
-    page: 'overview', period: '4w', cFrom: iso(41), cTo: iso(0), combo: null, rvCombo: '全部', rvFirst: '全部', rvMin: 2,
+    page: 'overview', period: '4w', cFrom: iso(41), cTo: iso(0), combo: null, rvCombo: '全部', rvFirst: '全部', rvMin: 2, rvDone: '全部',
     w: typeof window !== 'undefined' ? window.innerWidth : 1280,
     myCode: '', f: { code: '' }, authErr: '', authMsg: '', busy: false,
     toast: '', editing: null, setDraft: Object.assign({}, DEF), catSel: {}, renames: {}, thOpen: null, thDraft: {}, mergeName: '', nc: { name: '', books: '' }, delCat: null, delOk: false, prof: { display_name: '', level: '' }
@@ -813,7 +818,19 @@ class Component extends DCLogic {
       rvCombo: s.rvCombo, rvComboOpts: ['全部'].concat([...new Set(reviewAll.map(r => r.combo))].sort()), onRvCombo: e => this.setState({ rvCombo: e.target.value }),
       rvFirstOpts: ['全部', '黑先', '白先'].map(v => seg(s.rvFirst, v, v, () => this.setState({ rvFirst: v }))),
       rvMinOpts: [[2, '≥ 2 次'], [3, '≥ 3 次']].map(([v, l]) => seg(s.rvMin, v, l, () => this.setState({ rvMin: v }))),
-      rvList: rvFiltered, rvEmpty: !rvFiltered.length, rvCountText: rvFiltered.length + ' 題',
+      ...(() => {
+        const RV = (me.settings || {}).reviewed || {};
+        const doneOf = r => { const t = RV[r.pid]; return t && !(r.lastD > t && r.lastRes === '答錯') ? t : null; };
+        const toggle = r => e => { const on = e.target.checked, next = Object.assign({}, RV);
+          if (on) next[r.pid] = iso(0); else delete next[r.pid];
+          const settings = Object.assign({}, me.settings || {}, { reviewed: next });
+          this.setState(st => ({ profile: Object.assign({}, st.profile, { settings }) }));
+          this.api.saveProfile({ settings }).catch(err => { this.toast('儲存失敗：' + (err.message || err)); this.setState(st => ({ profile: Object.assign({}, st.profile, { settings: me.settings }) })); }); };
+        const list = rvFiltered.map(r => { const t = doneOf(r); return Object.assign({}, r, { done: !!t, doneText: t ? '已複習 ' + md(t) : '已複習', toggle: toggle(r), bg: t ? 'var(--color-accent-2-100)' : 'var(--color-bg)' }); })
+          .filter(r => s.rvDone === '全部' || (s.rvDone === '已複習' ? r.done : !r.done));
+        const nDone = rvFiltered.filter(r => doneOf(r)).length;
+        return { rvList: list, rvEmpty: !list.length, rvCountText: list.length + ' 題 · 已複習 ' + nDone + '／' + rvFiltered.length,
+          rvDoneOpts: ['全部', '未複習', '已複習'].map(v => seg(s.rvDone, v, v, () => this.setState({ rvDone: v }))) }; })(),
       wqName: me.wq_username || '尚未綁定', lastSyncText: when(lastSyncAt), syncTagText: stale == null ? '尚未同步' : stale > staleLimit ? stale + ' 天未同步' : '已同步', syncTagClass: stale != null && stale <= staleLimit ? 'tag-accent-2' : 'tag-accent',
       syncSteps: syncSteps.map((text, i) => ({ no: i + 1, text })), logs, noLogs: !logs.length,
       bigGap: stale != null && stale > 20, gapText: `已經 ${stale} 天沒有同步。101 的作業清單只顯示最近 100 份（約三週到一個月），更早的作業可能已經捲出清單，同步後也補不回來。`,
