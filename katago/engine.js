@@ -5,6 +5,7 @@
   const MODELS = [
     { id: 'b10', label: '標準 b10（約 11 MB）', file: 'kata1-b10c128.bin.gz' },
     { id: 'b24', label: '輕量 lionffen b24c64（手機可用）', file: 'lionffen_b24c64.bin.gz' },
+    { id: 'b40', label: '高強度 b40c256（約 170 MB，僅限電腦 WebGPU，很慢）', url: 'https://huggingface.co/ConnerXwolf/katago-models/resolve/main/kata1-b40c256-s11385575424-d2784196062.bin.gz', heavy: true },
     { id: 'custom', label: '自訂模型網址（.bin.gz）', file: '' }
   ];
   const LIB = BASE + 'lib/katago-web.js';
@@ -19,7 +20,7 @@
   function modelUrl(id, custom) {
     if (id === 'custom') { if (!custom) throw new Error('請填入自訂模型網址'); return new URL(custom, location.href).href; }
     const m = MODELS.find(x => x.id === id) || MODELS[0];
-    return BASE + 'models/' + m.file;
+    return m.url || BASE + 'models/' + m.file;
   }
   async function check(url, what) {
     const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }).catch(() => null);
@@ -35,8 +36,11 @@
     const p = (async () => {
       const L = await getLib();
       await check(BASE + 'lib/worker.js', ' katago/lib/worker.js');
-      await check(url, '模型檔');
-      const tries = navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'];
+      const mm = MODELS.find(x => x.id === id) || {};
+      const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (mm.heavy && (!navigator.gpu || mobile)) throw new Error('b40c256 需要電腦版瀏覽器的 WebGPU（Chrome / Edge）；手機或不支援 WebGPU 的瀏覽器請改用 b10 或 b24');
+      if (!mm.url) await check(url, '模型檔');
+      const tries = mm.heavy ? ['webgpu'] : navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'];
       let lastErr;
       for (const a of tries) {
         if (client) { try { client.dispose(); } catch (e) {} }
@@ -50,7 +54,7 @@
         say('初始化引擎（' + a + '）…');
         let tm;
         try {
-          await Promise.race([c.init(url, a), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(a + ' 初始化逾時（180 秒）')), 180000); })]);
+          await Promise.race([c.init(url, a), new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(a + ' 初始化逾時')), mm.heavy ? 600000 : 180000); })]);
           clearTimeout(tm); off && off();
           client = c; accel = (c.getEngineInfo && c.getEngineInfo().backend) || a; loadedKey = key;
           say('引擎就緒（' + accel + '）'); return c;
