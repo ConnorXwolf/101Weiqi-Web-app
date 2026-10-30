@@ -175,9 +175,21 @@
                     </div>
                   </sc-for>
                 </div>
-                <sc-if value="{{ hasWrMarks }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-neutral-800)"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.58 0.2 27);flex:none"></span>勝率轉折點（單手損失 ≥ 8%，最多 8 處），點紅點跳到該手</div></sc-if>
+                <sc-if value="{{ hasWrMarks }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-neutral-800)"><span style="width:9px;height:9px;border-radius:50%;background:oklch(0.58 0.2 27);flex:none"></span>勝率轉折點（黑白各損失最大 3 手，加上其他單手損失 ≥ 8% 的手），點紅點跳到該手</div></sc-if>
                 <div style="font-size:13px;color:var(--color-neutral-800);text-wrap:pretty">{{ aiNow }}</div>
-                <button class="btn btn-secondary" style="white-space:nowrap;align-self:flex-start" disabled="{{ aiBusy }}" onClick="{{ markTop }}">把損失最大的 3 手設為關鍵點</button>
+                <sc-if value="{{ hasLossTop }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:var(--radius-lg);background:var(--color-bg)">
+                      <span style="font-size:13px;font-weight:600">黑 · 損失最大 3 手</span>
+                      <sc-if value="{{ hasLossB }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ lossB }}" as="m" hint-placeholder-count="3"><button class="tag tag-neutral" style="border:none;cursor:pointer;font:inherit;font-size:12px" style-hover="background:var(--color-neutral-300)" onClick="{{ m.go }}">{{ m.label }}</button></sc-for></div></sc-if>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:var(--radius-lg);background:var(--color-bg)">
+                      <span style="font-size:13px;font-weight:600">白 · 損失最大 3 手</span>
+                      <sc-if value="{{ hasLossW }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ lossW }}" as="m" hint-placeholder-count="3"><button class="tag tag-neutral" style="border:none;cursor:pointer;font:inherit;font-size:12px" style-hover="background:var(--color-neutral-300)" onClick="{{ m.go }}">{{ m.label }}</button></sc-for></div></sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+                <button class="btn btn-secondary" style="white-space:nowrap;align-self:flex-start" disabled="{{ aiBusy }}" onClick="{{ markTop }}">{{ markTopText }}</button>
               </sc-if>
             </div>
           </div>
@@ -738,16 +750,24 @@ class Component extends DCLogic {
       wrArea: ai ? (() => { const pts = ai.wr.map((v, i) => v == null ? null : [i, 100 - v]).filter(Boolean); return pts.length ? 'M' + pts[0][0] + ' 100 ' + pts.map(p => 'L' + p[0] + ' ' + p[1].toFixed(1)).join(' ') + ' L' + pts[pts.length - 1][0] + ' 100 Z' : ''; })() : '',
       graphClick: e => { const r = e.currentTarget.getBoundingClientRect(); const n = Math.round((e.clientX - r.left) / r.width * maxMove); this.setState({ cur: Math.max(0, Math.min(maxMove, n)), vari: null, tryFor: null }); },
       ...(() => { const mk = [];
-        if (ai) { for (let i = 1; i <= maxMove; i++) { const v = lossAt(i), w = ai.wr[i]; if (v != null && w != null && v >= 8) mk.push({ i, v, w }); }
-          mk.sort((a, b) => b.v - a.v); mk.length = Math.min(mk.length, 8); mk.sort((a, b) => a.i - b.i); }
+        const topOf = c => { const L = []; if (ai) for (let i = 1; i <= maxMove; i++) { const m = B.line.moves[i - 1], v = lossAt(i); if (m && m.c === c && v != null && v > 0) L.push({ i, v, w: ai.wr[i] }); } return L.sort((a, b) => b.v - a.v).slice(0, 3); };
+        const tb = topOf('B'), tw = topOf('W');
+        if (ai) { const seen = new Set(); tb.concat(tw).forEach(m => { seen.add(m.i); mk.push(m); });
+          const extra = []; for (let i = 1; i <= maxMove; i++) { const v = lossAt(i), w = ai.wr[i]; if (!seen.has(i) && v != null && w != null && v >= 8) extra.push({ i, v, w }); }
+          extra.sort((a, b) => b.v - a.v); mk.push(...extra.slice(0, Math.max(0, 10 - mk.length))); mk.sort((a, b) => a.i - b.i); }
+        const go = i => e => { e && e.stopPropagation && e.stopPropagation(); this.setState({ cur: i, vari: null, tryFor: null }); };
+        const colorOf = i => (B.line.moves[i - 1] || {}).c === 'B' ? '黑' : '白';
         const wrMarks = mk.map(m => ({ no: m.i, left: (m.i / Math.max(1, maxMove) * 100) + '%', top: Math.max(6, Math.min(94, 100 - m.w)) + '%',
-          tip: '第 ' + m.i + ' 手 · 損失 ' + m.v + '%', go: e => { e.stopPropagation(); this.setState({ cur: m.i, vari: null, tryFor: null }); } }));
-        return { wrMarks, hasWrMarks: wrMarks.length > 0 }; })(),
+          tip: '第 ' + m.i + ' 手（' + colorOf(m.i) + '）· 損失 ' + m.v + '%', go: go(m.i) }));
+        const chip = m => ({ label: '第 ' + m.i + ' 手 −' + m.v + '%', go: go(m.i) });
+        return { wrMarks, hasWrMarks: wrMarks.length > 0, lossB: tb.map(chip), lossW: tw.map(chip), hasLossB: tb.length > 0, hasLossW: tw.length > 0, hasLossTop: tb.length + tw.length > 0 }; })(),
+      markTopText: I.my_color === '黑' || I.my_color === '白' ? '把我（' + I.my_color + '）損失最大的 3 手設為關鍵點' : '把損失最大的 3 手設為關鍵點',
       aiNow: ai ? (() => { const at0 = vari ? vari.base : cur, w = ai.wr[at0], l = ai.lead[at0], ls = lossAt(at0), b = ai.best[at0];
         if (w == null) return '這一手還沒分析到。';
         return [(vari ? '變化起點（第 ' + at0 + ' 手）' : at0 === 0 ? '開局' : '第 ' + at0 + ' 手') + '：黑勝率 ' + Math.round(w) + '%', l != null ? (l >= 0 ? '黑' : '白') + '領先 ' + Math.abs(l).toFixed(1) + ' 目' : '', ls != null ? '這手損失 ' + ls + '%' : '', b ? 'AI 推薦下一手 ' + (b === 'pass' ? '虛手' : b) + '（綠圈）' : ''].filter(Boolean).join(' · '); })() : '',
       markTop: () => { if (!ai) return; const have = new Set(d.points.map(p => Number(p.move_no)));
-        const L = []; for (let i = 1; i <= maxMove; i++) { const v = lossAt(i); if (v != null && !have.has(i)) L.push([i, v]); }
+        const myC = I.my_color === '黑' ? 'B' : I.my_color === '白' ? 'W' : null;
+        const L = []; for (let i = 1; i <= maxMove; i++) { const v = lossAt(i), m = B.line.moves[i - 1]; if (v != null && !have.has(i) && (!myC || (m && m.c === myC))) L.push([i, v]); }
         L.sort((x, y) => y[1] - x[1]); const top = L.slice(0, 3); if (!top.length) return this.say('沒有可以加入的手');
         this.addKps(top.map(([i, v]) => { const m = B.line.moves[i - 1], b = ai.best[i - 1]; return { move_no: i, my_move: m.pass ? '虛手' : nameOf(m.x, m.y, N), loss: v, correct: b && b !== 'pass' ? b : '' }; }));
         this.say('已加入第 ' + top.map(t => t[0]).sort((x, y) => x - y).join('、') + ' 手'); },
